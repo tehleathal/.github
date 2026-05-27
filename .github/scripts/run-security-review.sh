@@ -9,8 +9,10 @@ fi
 report_path="${REPORT_PATH:-security-reports/security-review-report.md}"
 mkdir -p "$(dirname "$report_path")"
 
+prompt_builder="${PROMPT_BUILDER:-.github/scripts/build-security-review-prompt.sh}"
+
 echo "Running Security Reviewer via Copilot CLI (scope: ${REVIEW_SCOPE:-unknown})..."
-bash .github/scripts/build-security-review-prompt.sh | copilot \
+bash "${prompt_builder}" | copilot \
   -s \
   --no-ask-user \
   --allow-tool='shell(git:*)' \

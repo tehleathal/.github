@@ -1,0 +1,124 @@
+# Manual security review of an external GitHub repository via Copilot CLI.
+# Default target: perplexityai/bumblebee
+# Requires repository secret: COPILOT_GITHUB_TOKEN (fine-grained PAT with Copilot Requests).
+
+name: External Security Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repository:
+        description: "GitHub repository to audit (owner/repo)"
+        required: true
+        default: "perplexityai/bumblebee"
+        type: string
+      target_ref:
+        description: "Branch, tag, or commit SHA to review"
+        required: true
+        default: "main"
+        type: string
+      report_name:
+        description: "Report filename slug (e.g. bumblebee → bumblebee-security-review-report.md)"
+        required: true
+        default: "bumblebee"
+        type: string
+
+concurrency:
+  group: external-security-review-${{ github.workflow }}-${{ inputs.target_repository }}-${{ inputs.target_ref }}
+  cancel-in-progress: true
+
+jobs:
+  external-security-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
+
+      - name: Verify Copilot token secret
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          if [[ -n "${COPILOT_GITHUB_TOKEN}" || -n "${PERSONAL_ACCESS_TOKEN}" ]]; then
+            echo "Copilot authentication secret is configured."
+            exit 0
+          fi
+          echo "::error::Missing repository secret for Copilot CLI on ${GITHUB_REPOSITORY}."
+          echo "::error::Add secret COPILOT_GITHUB_TOKEN (recommended) or PERSONAL_ACCESS_TOKEN at:"
+          echo "::error::https://github.com/${GITHUB_REPOSITORY}/settings/secrets/actions"
+          exit 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install GitHub Copilot CLI
+        run: npm install -g @github/copilot
+
+      - name: Clone target repository
+        env:
+          TARGET_REPOSITORY: ${{ inputs.target_repository }}
+          TARGET_REF: ${{ inputs.target_ref }}
+        run: |
+          set -euo pipefail
+          rm -rf target-repo
+          git clone --depth 1 --branch "${TARGET_REF}" \
+            "https://github.com/${TARGET_REPOSITORY}.git" target-repo 2>/dev/null || \
+          git clone --depth 1 \
+            "https://github.com/${TARGET_REPOSITORY}.git" target-repo
+          if ! git -C target-repo checkout "${TARGET_REF}" 2>/dev/null; then
+            echo "Checked out default branch; could not resolve ref ${TARGET_REF} exactly."
+          fi
+          echo "Cloned ${TARGET_REPOSITORY} at $(git -C target-repo rev-parse --short HEAD)"
+
+      - name: Resolve review scope
+        id: scope
+        env:
+          TARGET_REPOSITORY: ${{ inputs.target_repository }}
+          TARGET_REF: ${{ inputs.target_ref }}
+          TARGET_REPO_DIR: target-repo
+        run: bash .github/scripts/resolve-external-security-review-scope.sh
+
+      - name: Run Security Reviewer (Copilot CLI)
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN || secrets.PERSONAL_ACCESS_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TARGET_REPOSITORY: ${{ inputs.target_repository }}
+          TARGET_REF: ${{ inputs.target_ref }}
+          TARGET_REPO_DIR: target-repo
+          REVIEW_SCOPE: ${{ steps.scope.outputs.review_scope }}
+          REVIEW_DIFF_CMD: ${{ steps.scope.outputs.review_diff_cmd }}
+          REPORT_PATH: security-reports/${{ inputs.report_name }}-security-review-report.md
+          PROMPT_BUILDER: .github/scripts/build-external-security-review-prompt.sh
+        run: bash .github/scripts/run-security-review.sh
+
+      - name: Publish report to job summary
+        if: always()
+        env:
+          REPORT_PATH: security-reports/${{ inputs.report_name }}-security-review-report.md
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: workflow_dispatch
+          GITHUB_SHA: ${{ github.sha }}
+          TARGET_REPOSITORY: ${{ inputs.target_repository }}
+          TARGET_REF: ${{ inputs.target_ref }}
+        run: bash .github/scripts/publish-security-report-summary.sh
+
+      - name: Upload security report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.report_name }}-security-review-${{ github.run_id }}
+          path: security-reports/${{ inputs.report_name }}-security-review-report.md
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Fail on blocking findings
+        if: always()
+        env:
+          REPORT_PATH: security-reports/${{ inputs.report_name }}-security-review-report.md
+        run: bash .github/scripts/check-security-review-gate.sh

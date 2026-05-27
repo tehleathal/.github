@@ -16,7 +16,11 @@ fi
 {
   echo "## Security Review Report"
   echo
-  echo "**Repository:** \`${GITHUB_REPOSITORY:-}\` · **Event:** \`${GITHUB_EVENT_NAME:-}\` · **SHA:** \`${GITHUB_SHA:-}\`"
+  if [[ -n "${TARGET_REPOSITORY:-}" ]]; then
+    echo "**Workflow repository:** \`${GITHUB_REPOSITORY:-}\` · **Target:** \`${TARGET_REPOSITORY:-}\`@${TARGET_REF:-} · **Event:** \`${GITHUB_EVENT_NAME:-}\`"
+  else
+    echo "**Repository:** \`${GITHUB_REPOSITORY:-}\` · **Event:** \`${GITHUB_EVENT_NAME:-}\` · **SHA:** \`${GITHUB_SHA:-}\`"
+  fi
   echo
   cat "$report_path"
 } >>"$summary"

@@ -19,6 +19,7 @@ See [GitHub's docs on default community health files](https://docs.github.com/en
 | `.github/PULL_REQUEST_TEMPLATE.md` | Default pull request template |
 | `.github/agents/security-reviewer.agent.md` | Security Reviewer custom agent |
 | `.github/workflows/security-review.yml` | Copilot CLI security review on push/PR |
+| `.github/workflows/external-security-review.yml` | Manual security review of an external repo (default: `perplexityai/bumblebee`) |
 | `.agent/skills/` | Security review skills (methodology, report format, domains) |
 
 ## Automated security review (Copilot CLI)
@@ -47,6 +48,25 @@ If the workflow fails immediately with "Missing repository secret", the secret i
 ### Run manually
 
 Actions → **Security Review** → **Run workflow**.
+
+### External repository review (e.g. Bumblebee)
+
+Actions → **External Security Review** → **Run workflow**.
+
+Defaults are pre-filled for [perplexityai/bumblebee](https://github.com/perplexityai/bumblebee):
+
+| Input | Default |
+|-------|---------|
+| `target_repository` | `perplexityai/bumblebee` |
+| `target_ref` | `main` |
+| `report_name` | `bumblebee` |
+
+The workflow clones the target repo, runs the Security Reviewer agent against the full tree, and publishes:
+
+- Markdown report: `security-reports/bumblebee-security-review-report.md`
+- Job summary + downloadable artifact (`bumblebee-security-review-<run_id>`)
+
+Change inputs to audit other public repositories. Requires the same `COPILOT_GITHUB_TOKEN` secret as the in-repo workflow.
 
 ### Reuse in other repositories
 
