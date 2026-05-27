@@ -24,6 +24,11 @@ jobs:
       pull-requests: read
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Verify Copilot token secret
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
@@ -33,16 +38,12 @@ jobs:
             echo "Copilot authentication secret is configured."
             exit 0
           fi
-          echo "::error::Missing repository secret for Copilot CLI."
-          echo "::error::Add secret COPILOT_GITHUB_TOKEN (recommended) or PERSONAL_ACCESS_TOKEN."
+          echo "::error::Missing repository secret for Copilot CLI on ${GITHUB_REPOSITORY}."
+          echo "::error::Add secret COPILOT_GITHUB_TOKEN (recommended) or PERSONAL_ACCESS_TOKEN at:"
+          echo "::error::https://github.com/${GITHUB_REPOSITORY}/settings/secrets/actions"
           echo "::error::Create a fine-grained PAT with Copilot Requests: https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli"
-          echo "::error::Then: Settings → Secrets and variables → Actions → New repository secret"
+          echo "::error::Org secrets only work if this repository is included in the secret's access list."
           exit 1
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -78,6 +79,11 @@ jobs:
 
       - name: Publish report to job summary
         if: always()
+        env:
+          REPORT_PATH: security-reports/security-review-report.md
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
         run: bash .github/scripts/publish-security-report-summary.sh
 
       - name: Upload security report artifact
@@ -91,4 +97,6 @@ jobs:
 
       - name: Fail on blocking findings
         if: always()
+        env:
+          REPORT_PATH: security-reports/security-review-report.md
         run: bash .github/scripts/check-security-review-gate.sh
