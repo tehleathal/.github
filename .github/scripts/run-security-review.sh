@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ -z "${COPILOT_GITHUB_TOKEN:-}" ]]; then
-  echo "::error::Missing COPILOT_GITHUB_TOKEN. Add a repository secret (fine-grained PAT with Copilot Requests). See README.md."
+  echo "::error::Copilot token is empty. Set repository secret COPILOT_GITHUB_TOKEN or PERSONAL_ACCESS_TOKEN (fine-grained PAT with Copilot Requests). See README.md."
   exit 1
 fi
 

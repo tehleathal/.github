@@ -24,6 +24,21 @@ jobs:
       pull-requests: read
 
     steps:
+      - name: Verify Copilot token secret
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          if [[ -n "${COPILOT_GITHUB_TOKEN}" || -n "${PERSONAL_ACCESS_TOKEN}" ]]; then
+            echo "Copilot authentication secret is configured."
+            exit 0
+          fi
+          echo "::error::Missing repository secret for Copilot CLI."
+          echo "::error::Add secret COPILOT_GITHUB_TOKEN (recommended) or PERSONAL_ACCESS_TOKEN."
+          echo "::error::Create a fine-grained PAT with Copilot Requests: https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli"
+          echo "::error::Then: Settings → Secrets and variables → Actions → New repository secret"
+          exit 1
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -48,7 +63,7 @@ jobs:
 
       - name: Run Security Reviewer (Copilot CLI)
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN || secrets.PERSONAL_ACCESS_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_SHA: ${{ github.sha }}

@@ -29,7 +29,12 @@ On **pull requests**, **pushes to `main`**, and **manual dispatch**, the [Securi
 
 1. **Copilot subscription** on the account that owns the token (Pro+ / Business / Enterprise as required by your org).
 2. **Fine-grained personal access token** with **Copilot Requests** (read-only is enough for review-only runs). See [Authenticate Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli).
-3. Repository secret **`COPILOT_GITHUB_TOKEN`** — paste the PAT (Settings → Secrets and variables → Actions).
+3. Repository secret **`COPILOT_GITHUB_TOKEN`** (or **`PERSONAL_ACCESS_TOKEN`**) — paste the PAT:
+   - Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+   - Name: `COPILOT_GITHUB_TOKEN`
+   - Value: your fine-grained PAT
+
+If the workflow fails immediately with "Missing repository secret", this step was skipped or the secret name does not match.
 
 ### What you get
 
