@@ -1,0 +1,79 @@
+# Security review via GitHub Copilot CLI (Option 1).
+# Requires repository secret: COPILOT_GITHUB_TOKEN (fine-grained PAT with Copilot Requests).
+# See README.md → "Automated security review".
+
+name: Security Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: security-review-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install GitHub Copilot CLI
+        run: npm install -g @github/copilot
+
+      - name: Resolve review scope
+        id: scope
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+        run: bash .github/scripts/resolve-security-review-scope.sh
+
+      - name: Run Security Reviewer (Copilot CLI)
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          REVIEW_SCOPE: ${{ steps.scope.outputs.review_scope }}
+          REVIEW_DIFF_CMD: ${{ steps.scope.outputs.review_diff_cmd }}
+          REPORT_PATH: security-reports/security-review-report.md
+        run: bash .github/scripts/run-security-review.sh
+
+      - name: Publish report to job summary
+        if: always()
+        run: bash .github/scripts/publish-security-report-summary.sh
+
+      - name: Upload security report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-review-${{ github.run_id }}
+          path: security-reports/security-review-report.md
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Fail on blocking findings
+        if: always()
+        run: bash .github/scripts/check-security-review-gate.sh

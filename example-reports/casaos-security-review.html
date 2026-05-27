@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Review Report — IceWhaleTech/CasaOS</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e6edf3;
+      --muted: #8b9cb3;
+      --border: #303d52;
+      --critical: #ff6b6b;
+      --high: #ff9f43;
+      --medium: #feca57;
+      --low: #54a0ff;
+      --info: #5f27cd;
+      --pass: #1dd1a1;
+      --link: #48dbfb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    .layout { display: flex; min-height: 100vh; }
+    nav {
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    nav h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 1.25rem 0 0.5rem; }
+    nav h2:first-child { margin-top: 0; }
+    nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.35rem 0;
+      font-size: 0.875rem;
+    }
+    nav a:hover { color: var(--link); }
+    main { flex: 1; padding: 2.5rem 3rem; max-width: 960px; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .meta a { color: var(--link); }
+    h2 { font-size: 1.35rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+    p { margin-bottom: 1rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-critical { background: rgba(255,107,107,0.2); color: var(--critical); }
+    .badge-high { background: rgba(255,159,67,0.2); color: var(--high); }
+    .badge-medium { background: rgba(254,202,87,0.2); color: var(--medium); }
+    .badge-low { background: rgba(84,160,255,0.2); color: var(--low); }
+    .badge-info { background: rgba(95,39,205,0.2); color: #a29bfe; }
+    .badge-pass { background: rgba(29,209,161,0.2); color: var(--pass); }
+    .badge-fail { background: rgba(255,107,107,0.2); color: var(--critical); }
+    .recommendation {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--high);
+      padding: 1.25rem 1.5rem;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+    }
+    .recommendation.block { border-left-color: var(--critical); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: var(--surface2); color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .finding {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .finding-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .finding-header h3 { margin: 0; flex: 1; min-width: 200px; }
+    .finding-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+    .finding-meta dt { color: var(--muted); }
+    .finding-meta dd { font-family: ui-monospace, monospace; }
+    pre, code {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 0.82rem;
+    }
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+    code { color: #7ee787; }
+    .section-intro { color: var(--muted); margin-bottom: 1rem; }
+    ul, ol { margin: 0.5rem 0 1rem 1.5rem; }
+    li { margin-bottom: 0.35rem; }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin: 1.5rem 0; }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat .num { font-size: 1.75rem; font-weight: 700; }
+    .stat .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+    .stat-critical .num { color: var(--critical); }
+    .stat-high .num { color: var(--high); }
+    .stat-medium .num { color: var(--medium); }
+    .stat-low .num { color: var(--low); }
+    .stat-info .num { color: #a29bfe; }
+    .safe-list li { color: var(--pass); }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      nav { width: 100%; height: auto; position: relative; }
+      main { padding: 1.5rem; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      nav { display: none; }
+      .finding, table th { background: #f5f5f5; }
+      pre { background: #eee; border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <h2>Report</h2>
+    <a href="#executive">Executive Summary</a>
+    <a href="#scope">Scope &amp; Architecture</a>
+    <a href="#threat-model">Threat Model</a>
+    <a href="#summary-table">Findings Summary</a>
+    <h2>Critical &amp; High</h2>
+    <a href="#AUTH-001">AUTH-001 JWT localhost bypass</a>
+    <a href="#PATH-001">PATH-001 Arbitrary file read</a>
+    <a href="#PATH-002">PATH-002 Arbitrary file write/delete</a>
+    <a href="#INJ-002">INJ-002 curl | bash update</a>
+    <a href="#AUTH-002">AUTH-002 Debug endpoint</a>
+    <a href="#SSRF-001">SSRF-001 HTTP proxy</a>
+    <a href="#DEFAULT-001">DEFAULT-001 Samba guest root</a>
+    <h2>More</h2>
+    <a href="#medium">Medium Findings</a>
+    <a href="#low-info">Low &amp; Info</a>
+    <a href="#verified-safe">Verified Safe</a>
+    <a href="#owasp">OWASP Top 10</a>
+    <a href="#out-of-scope">Out of Scope</a>
+    <a href="#next-steps">Next Steps</a>
+  </nav>
+
+  <main>
+    <h1>Security Review Report</h1>
+    <p class="meta">
+      <strong>Target:</strong> <a href="https://github.com/IceWhaleTech/CasaOS" target="_blank" rel="noopener">IceWhaleTech/CasaOS</a> (full repository audit, main branch)<br>
+      <strong>Reviewer:</strong> Security Reviewer agent (<code>.github/agents/security-reviewer.agent.md</code>)<br>
+      <strong>Date:</strong> 2026-05-28<br>
+      <strong>Method:</strong> Static adversarial code review — methodology, domain skills, OWASP baseline, structured report format
+    </p>
+
+    <section id="executive">
+      <h2>Executive Summary</h2>
+      <p>
+        <strong>CasaOS</strong> is an open-source personal cloud / home-server OS written in Go (Echo HTTP framework).
+        The main service binds to <code>127.0.0.1</code> and registers routes with an external CasaOS Gateway that proxies public traffic.
+        The architecture exposes filesystem management, Samba shares, cloud storage (rclone), ZeroTier networking, system control (update/shutdown), and WebSocket SSH — all intended for a single home administrator.
+      </p>
+      <p>
+        The review identified <strong>four Critical</strong> issues that chain into full host compromise: JWT authentication is skipped for all requests proxied through the Gateway (localhost Skipper), file APIs read/write arbitrary paths on the host without a jail, and system updates execute <code>curl | bash</code> from configurable URLs.
+        Additional High findings include unauthenticated debug endpoints, SSRF proxies, Samba shares with anonymous guest write mapped to root, and hardcoded signing secrets.
+      </p>
+
+      <div class="recommendation block">
+        <strong>Recommendation: Block — do not expose CasaOS Gateway to untrusted networks until Critical findings are remediated.</strong>
+        <p style="margin:0.75rem 0 0">The AUTH-001 localhost JWT bypass effectively nullifies authentication for all Gateway-proxied API traffic. Combined with PATH-001/002, an unauthenticated attacker on the LAN (or internet if the Gateway is reachable) can read <code>/etc/shadow</code>, write cron jobs, trigger remote code execution via <code>POST /v1/sys/update</code>, and control ZeroTier/rclone integrations.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat stat-critical"><div class="num">4</div><div class="label">Critical</div></div>
+        <div class="stat stat-high"><div class="num">10</div><div class="label">High</div></div>
+        <div class="stat stat-medium"><div class="num">8</div><div class="label">Medium</div></div>
+        <div class="stat stat-low"><div class="num">1</div><div class="label">Low</div></div>
+        <div class="stat stat-info"><div class="num">1</div><div class="label">Info</div></div>
+      </div>
+    </section>
+
+    <section id="scope">
+      <h2>Scope &amp; Architecture</h2>
+      <p class="section-intro">Full-repository review of the public <code>IceWhaleTech/CasaOS</code> codebase (shallow clone of main). JWT validation and Gateway logic partially live in the external <code>CasaOS-Common</code> dependency; findings below are from in-repo code and observable integration patterns.</p>
+
+      <table>
+        <thead><tr><th>Component</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Runtime</td><td>Go 1.x, Echo v4, GORM, gorilla/websocket</td></tr>
+          <tr><td>Entry</td><td><code>main.go</code> — binds <code>127.0.0.1</code>, registers routes with Gateway</td></tr>
+          <tr><td>API v1</td><td><code>route/v1.go</code>, <code>route/v1/*</code> — file, system, Samba, cloud, SSH, ZeroTier</td></tr>
+          <tr><td>API v2/v3</td><td>OpenAPI health/upload; v3 file serve with query token</td></tr>
+          <tr><td>Services</td><td><code>service/</code> — system, storage (rclone), shares, connections</td></tr>
+          <tr><td>Drivers</td><td>Google Drive, Dropbox, OneDrive OAuth + rclone config</td></tr>
+          <tr><td>Trust boundaries</td><td>Internet/LAN → Gateway → Main (127.0.0.1); Main → host FS, shell scripts, rclone socket, ZeroTier API</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Data flows reviewed</h3>
+      <pre>Browser/LAN client → CasaOS Gateway (public) → proxy → Main service (127.0.0.1)
+JWT middleware Skipper → bypasses auth when RealIP is 127.0.0.1 (all proxied traffic)
+GET /v1/file/content?path= → ioutil.ReadFile(path) — no base-path jail
+POST /v1/sys/update → curl -fsSL {UpdateUrl} | bash
+GET /v1/sys/proxy?url= → http.Get(user URL) — SSRF
+ANY /v1/zt/* → ZeroTier localhost API with authtoken.secret</pre>
+    </section>
+
+    <section id="threat-model">
+      <h2>Threat Model Summary</h2>
+      <table>
+        <thead><tr><th>STRIDE</th><th>Applicable threat</th><th>Priority</th></tr></thead>
+        <tbody>
+          <tr><td>Spoofing</td><td>JWT bypass allows impersonation of any authenticated user; hardcoded HMAC key enables forged signed URLs</td><td><span class="badge badge-critical">Critical</span></td></tr>
+          <tr><td>Tampering</td><td>Arbitrary file write/delete; Samba guest write as root; rclone mount manipulation</td><td><span class="badge badge-critical">Critical</span></td></tr>
+          <tr><td>Information disclosure</td><td>Debug endpoint; arbitrary file read of secrets/configs; SSH creds in URL query</td><td><span class="badge badge-high">High</span></td></tr>
+          <tr><td>Denial of service</td><td>System shutdown/restart endpoints; file deletion via <code>os.RemoveAll</code></td><td><span class="badge badge-high">High</span></td></tr>
+          <tr><td>Elevation of privilege</td><td>Unauthenticated API → host RCE via update script; Samba <code>force user = root</code></td><td><span class="badge badge-critical">Critical</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>App-specific review guidelines</h3>
+      <ol>
+        <li>JWT middleware must not skip validation for Gateway-proxied requests (<code>route/v1.go:45-47</code>).</li>
+        <li>All file operations must use <code>JoinBasePath</code> / <code>IsSubPath</code> against an allowlisted base (e.g. <code>/DATA</code>).</li>
+        <li>System updates must use signed packages — never <code>curl | bash</code> (<code>service/system.go:382-385</code>).</li>
+        <li>SSRF endpoints (<code>/v1/sys/proxy</code>, <code>/v1/other/search</code>, <code>/v1/zt/*</code>) must block private/loopback IPs.</li>
+        <li>Samba shares must not default to anonymous guest write with <code>force user = root</code>.</li>
+        <li>Debug and version endpoints must require authentication in production builds.</li>
+      </ol>
+    </section>
+
+    <section id="summary-table">
+      <h2>Findings Summary</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Severity</th><th>Category</th><th>Title</th></tr></thead>
+        <tbody>
+          <tr><td>AUTH-001</td><td><span class="badge badge-critical">Critical</span></td><td>Authentication</td><td>JWT bypass via localhost Skipper on Gateway-proxied traffic</td></tr>
+          <tr><td>PATH-001</td><td><span class="badge badge-critical">Critical</span></td><td>Access control</td><td>Arbitrary file read — no path jail</td></tr>
+          <tr><td>PATH-002</td><td><span class="badge badge-critical">Critical</span></td><td>Access control</td><td>Arbitrary file write and delete</td></tr>
+          <tr><td>INJ-002</td><td><span class="badge badge-critical">Critical</span></td><td>Injection/RCE</td><td>System update via curl | bash</td></tr>
+          <tr><td>AUTH-002</td><td><span class="badge badge-high">High</span></td><td>Authentication</td><td>Unauthenticated /v1/sys/debug endpoint</td></tr>
+          <tr><td>AUTH-003</td><td><span class="badge badge-high">High</span></td><td>Authentication</td><td>Multiple unauthenticated endpoints (ping, version, OAuth recover)</td></tr>
+          <tr><td>PATH-003</td><td><span class="badge badge-high">High</span></td><td>Access control</td><td>Path sanitization helpers exist but are unused</td></tr>
+          <tr><td>SSRF-001</td><td><span class="badge badge-high">High</span></td><td>SSRF</td><td>Authenticated HTTP proxy to arbitrary URLs</td></tr>
+          <tr><td>SSRF-002</td><td><span class="badge badge-high">High</span></td><td>SSRF</td><td>Search agent fetches user-supplied URL</td></tr>
+          <tr><td>SSRF-003</td><td><span class="badge badge-high">High</span></td><td>SSRF</td><td>ZeroTier API raw proxy with authtoken</td></tr>
+          <tr><td>INJ-001</td><td><span class="badge badge-high">High</span></td><td>Injection</td><td>Command injection via network interface name in shell</td></tr>
+          <tr><td>SEC-001</td><td><span class="badge badge-high">High</span></td><td>Secrets</td><td>Hardcoded HMAC signing key "token"</td></tr>
+          <tr><td>DEFAULT-001</td><td><span class="badge badge-high">High</span></td><td>Misconfiguration</td><td>Samba anonymous guest write, force user root</td></tr>
+          <tr><td>DEFAULT-003</td><td><span class="badge badge-high">High</span></td><td>Misconfiguration</td><td>SSH credentials in URL query parameters</td></tr>
+          <tr><td>AUTH-004</td><td><span class="badge badge-medium">Medium</span></td><td>Authentication</td><td>JWT accepted in query string</td></tr>
+          <tr><td>AUTH-005</td><td><span class="badge badge-medium">Medium</span></td><td>Authentication</td><td>OpenAPI documentation publicly exposed</td></tr>
+          <tr><td>INJ-003</td><td><span class="badge badge-medium">Medium</span></td><td>Injection</td><td>Multipart upload path from client headers</td></tr>
+          <tr><td>CSRF-001</td><td><span class="badge badge-medium">Medium</span></td><td>CSRF</td><td>No CSRF protection; CORS AllowOrigins *</td></tr>
+          <tr><td>SEC-002</td><td><span class="badge badge-medium">Medium</span></td><td>Secrets</td><td>Hardcoded Dropbox OAuth credentials</td></tr>
+          <tr><td>DEFAULT-002</td><td><span class="badge badge-medium">Medium</span></td><td>Misconfiguration</td><td>WebSocket CheckOrigin always true</td></tr>
+          <tr><td>DOCKER-001</td><td><span class="badge badge-medium">Medium</span></td><td>Container</td><td>Unrestricted rclone unix socket API access</td></tr>
+          <tr><td>DEFAULT-004</td><td><span class="badge badge-medium">Medium</span></td><td>Misconfiguration</td><td>Startup scripts from /etc/casaos/start.d</td></tr>
+          <tr><td>INFO-001</td><td><span class="badge badge-low">Low</span></td><td>Hardening</td><td>Debug file test endpoint in v2 API</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="critical-high">
+      <h2>Critical &amp; High Findings</h2>
+
+      <article class="finding" id="AUTH-001">
+        <div class="finding-header">
+          <h3>[AUTH-001] JWT authentication bypass via localhost Skipper</h3>
+          <span class="badge badge-critical">Critical</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Authentication</dd></div>
+          <div><dt>Location</dt><dd>route/v1.go:44-47; route/v2.go:71-74; main.go:129,152-156</dd></div>
+          <div><dt>CWE</dt><dd>CWE-306, CWE-287</dd></div>
+        </dl>
+        <p><strong>Description.</strong> JWT middleware skips validation when <code>RealIP()</code> is <code>127.0.0.1</code> or <code>::1</code>. The main service listens only on localhost and the Gateway proxies all public traffic to that address, so every external request appears as localhost and bypasses JWT entirely.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>v1Group.Use(echo_middleware.JWTWithConfig(echo_middleware.JWTConfig{
+    Skipper: func(c echo.Context) bool {
+        return c.RealIP() == "::1" || c.RealIP() == "127.0.0.1"
+    },
+    ...
+}))
+// main.go — Gateway registers routes to localhost listener
+listener, err := net.Listen("tcp", net.JoinHostPort(LOCALHOST, "0"))
+err = service.MyService.Gateway().CreateRoute(&model.Route{
+    Path: apiPath, Target: "http://" + listener.Addr().String(),
+})</pre>
+        <p><strong>Exploit scenario.</strong></p>
+        <ol>
+          <li>Attacker reaches CasaOS Gateway on LAN or internet (default home-server deployment).</li>
+          <li>Gateway forwards request to Main; Echo sees <code>RealIP() == 127.0.0.1</code>.</li>
+          <li>JWT Skipper returns true — no token required for <code>/v1/file/*</code>, <code>/v1/sys/update</code>, <code>/v1/sys/stop</code>, etc.</li>
+        </ol>
+        <p><strong>Remediation.</strong> Remove the localhost Skipper. Authenticate at the Gateway layer and pass verified identity via non-spoofable headers, or validate JWT on every request regardless of source IP.</p>
+        <p><strong>Verification.</strong> Send <code>GET /v1/file/content?path=/etc/hostname</code> through Gateway without Authorization header — must return 401.</p>
+      </article>
+
+      <article class="finding" id="PATH-001">
+        <div class="finding-header">
+          <h3>[PATH-001] Arbitrary file read — no path jail</h3>
+          <span class="badge badge-critical">Critical</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Broken access control</dd></div>
+          <div><dt>Location</dt><dd>route/v1/file.go:87-116,225-260; route/v2.go:166-169</dd></div>
+          <div><dt>CWE</dt><dd>CWE-22, CWE-200</dd></div>
+        </dl>
+        <p><strong>Description.</strong> File content and download handlers pass user-supplied <code>path</code> query parameters directly to <code>ioutil.ReadFile</code>, <code>os.Open</code>, and <code>http.ServeFile</code> without restricting to an allowlisted base directory.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>func GetFilerContent(ctx echo.Context) error {
+    filePath := ctx.QueryParam("path")
+    ...
+    info, err := ioutil.ReadFile(filePath)
+}
+// route/v2.go InitFile handler
+filePath := r.URL.Query().Get("path")
+http.ServeFile(w, r, filePath)</pre>
+        <p><strong>Exploit scenario.</strong> With AUTH-001 bypass: <code>GET /v1/file/content?path=/etc/shadow</code> returns password hashes. Also readable: <code>/etc/casaos/casaos.conf</code>, SSH keys, rclone cloud tokens.</p>
+        <p><strong>Remediation.</strong> Enforce base-path containment using <code>JoinBasePath("/DATA", userPath)</code> and post-join prefix validation via <code>IsSubPath</code>.</p>
+        <p><strong>Verification.</strong> Request <code>path=../../../etc/passwd</code> — must return 403 regardless of auth state.</p>
+      </article>
+
+      <article class="finding" id="PATH-002">
+        <div class="finding-header">
+          <h3>[PATH-002] Arbitrary file write and delete</h3>
+          <span class="badge badge-critical">Critical</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Broken access control</dd></div>
+          <div><dt>Location</dt><dd>route/v1/file.go:697-755; service/file_upload.go:79-156</dd></div>
+          <div><dt>CWE</dt><dd>CWE-22, CWE-732</dd></div>
+        </dl>
+        <p><strong>Description.</strong> Delete, put-content, and chunked upload endpoints accept arbitrary filesystem paths from the request body without jail validation.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>func DeleteFile(ctx echo.Context) error {
+    paths := []string{}
+    ctx.Bind(&paths)
+    for _, v := range paths {
+        err := os.RemoveAll(v)
+    }
+}
+func PutFileContent(ctx echo.Context) error {
+    fi := model.FileUpdate{}
+    ctx.Bind(&fi)
+    err = file.WriteToFullPath([]byte(fi.FileContent), fi.FilePath, fm)</pre>
+        <p><strong>Exploit scenario.</strong> Attacker writes cron job to <code>/etc/cron.d/evil</code>, overwrites systemd units, or deletes <code>/DATA</code> or system directories via <code>DELETE /v1/file</code> with body <code>["/"]</code>.</p>
+        <p><strong>Remediation.</strong> Apply base-path jail on all write/delete/rename operations; reject paths outside <code>/DATA</code> (or configured storage root).</p>
+        <p><strong>Verification.</strong> Attempt write to <code>/etc/passwd</code> — must fail with access denied.</p>
+      </article>
+
+      <article class="finding" id="INJ-002">
+        <div class="finding-header">
+          <h3>[INJ-002] Remote code execution via curl | bash system update</h3>
+          <span class="badge badge-critical">Critical</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Injection / RCE</dd></div>
+          <div><dt>Location</dt><dd>service/system.go:373-386; route/v1/system.go:74</dd></div>
+          <div><dt>CWE</dt><dd>CWE-94, CWE-829</dd></div>
+        </dl>
+        <p><strong>Description.</strong> System update executes remote shell scripts piped from curl without signature verification. Update URL is configurable via <code>casaos.conf</code>.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>func (s *systemService) UpdateSystemVersion(version string) {
+    if len(config.ServerInfo.UpdateUrl) > 0 {
+        go command.OnlyExec("curl -fsSL " + config.ServerInfo.UpdateUrl + " | bash")
+    } else {
+        go command.OnlyExec("curl -fsSL https://get.casaos.io/update?t=" + osRelease["MANUFACTURER"] + " | bash")
+    }
+}
+// route/v1.go — POST /v1/sys/update triggers this</pre>
+        <p><strong>Exploit scenario.</strong> With AUTH-001: <code>POST /v1/sys/update</code> runs arbitrary remote code as the CasaOS service user (often root). Attacker who can modify <code>UpdateUrl</code> in config achieves persistent RCE on next update trigger.</p>
+        <p><strong>Remediation.</strong> Use signed packages (deb/rpm) with GPG verification; never pipe curl output to bash.</p>
+        <p><strong>Verification.</strong> Update flow uses package manager only; network MITM cannot execute arbitrary shell.</p>
+      </article>
+
+      <article class="finding" id="AUTH-002">
+        <div class="finding-header">
+          <h3>[AUTH-002] Unauthenticated debug endpoint exposes system information</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Information disclosure</dd></div>
+          <div><dt>Location</dt><dd>route/v1.go:32; route/v1/system.go:86-104</dd></div>
+          <div><dt>CWE</dt><dd>CWE-200, CWE-215</dd></div>
+        </dl>
+        <p><strong>Description.</strong> <code>GET /v1/sys/debug</code> is registered outside the JWT-protected group and returns OS version, disk info, and system configuration.</p>
+        <pre>e.GET("/v1/sys/debug", v1.GetSystemConfigDebug) // outside v1Group JWT middleware</pre>
+        <p><strong>Exploit scenario.</strong> Unauthenticated reconnaissance for targeted exploits against specific CasaOS/OS versions.</p>
+        <p><strong>Remediation.</strong> Remove in production builds or require authentication.</p>
+      </article>
+
+      <article class="finding" id="SSRF-001">
+        <div class="finding-header">
+          <h3>[SSRF-001] Authenticated HTTP proxy to arbitrary URLs</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>SSRF</dd></div>
+          <div><dt>Location</dt><dd>route/v1/system.go:314-330</dd></div>
+          <div><dt>CWE</dt><dd>CWE-918</dd></div>
+        </dl>
+        <p><strong>Description.</strong> <code>GET /v1/sys/proxy?url=</code> fetches any URL supplied by the user and returns the response body.</p>
+        <pre>func GetSystemProxy(ctx echo.Context) error {
+    url := ctx.QueryParam("url")
+    resp, err := http2.Get(url, 30*time.Second)
+    ...
+    io.Copy(ctx.Response().Writer, ioutil.NopCloser(bytes.NewBuffer(rda)))</pre>
+        <p><strong>Exploit scenario.</strong> Probe <code>http://127.0.0.1:9993/</code> (ZeroTier), <code>http://169.254.169.254/</code> (cloud metadata), or internal Gateway management ports.</p>
+        <p><strong>Remediation.</strong> Block private/link-local/loopback IPs; allowlist domains; remove endpoint if unused.</p>
+      </article>
+
+      <article class="finding" id="DEFAULT-001">
+        <div class="finding-header">
+          <h3>[DEFAULT-001] Samba shares with anonymous guest write as root</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Misconfiguration</dd></div>
+          <div><dt>Location</dt><dd>route/v1/samba.go:86-92; service/shares.go:77-91</dd></div>
+          <div><dt>CWE</dt><dd>CWE-276, CWE-732</dd></div>
+        </dl>
+        <p><strong>Description.</strong> New Samba shares default to anonymous access with world-writable permissions and <code>force user = root</code> in generated smb.conf.</p>
+        <pre>shareDBModel.Anonymous = true
+os.Chmod(v.Path, 0o777)
+// service/shares.go generated config:
+public = Yes
+guest ok = Yes
+force user = root
+create mask = 0777</pre>
+        <p><strong>Exploit scenario.</strong> Any LAN client writes to shared folders as root-mapped Samba user — data destruction or planting malicious files.</p>
+        <p><strong>Remediation.</strong> Default to authenticated shares; never combine <code>guest ok = Yes</code> with <code>force user = root</code>.</p>
+      </article>
+    </section>
+
+    <section id="medium">
+      <h2>Medium Findings</h2>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[AUTH-003] Multiple unauthenticated API endpoints</h3><span class="badge badge-high">High</span></div>
+        <p><strong>Location:</strong> <code>route/v1.go:34-41</code></p>
+        <p>Public routes: <code>/ping</code>, <code>/v1/sys/version/check</code>, <code>/v1/sys/version/current</code>, <code>/v1/recover/:type</code> (OAuth callback). Version endpoints aid fingerprinting; OAuth recover may be CSRF-vulnerable without session-bound state.</p>
+        <p><strong>Fix:</strong> Restrict version endpoints; bind OAuth state to authenticated session.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[PATH-003] Path sanitization utilities exist but are unused</h3><span class="badge badge-high">High</span></div>
+        <p><strong>Location:</strong> <code>pkg/utils/path.go:76-80</code></p>
+        <p><code>JoinBasePath</code> and <code>IsSubPath</code> reject <code>../</code> traversal but are never called from route handlers — developers assumed safety that does not exist.</p>
+        <p><strong>Fix:</strong> Apply consistently in all file endpoints.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SSRF-002] Search agent fetches user-supplied URL</h3><span class="badge badge-high">High</span></div>
+        <p><strong>Location:</strong> <code>route/v1/other.go:12-21</code>; <code>service/other.go:103-111</code></p>
+        <p><code>POST /v1/other/search</code> with <code>{"url":"http://127.0.0.1:6379/"}</code> probes internal services via resty client.</p>
+        <p><strong>Fix:</strong> Same SSRF controls as SSRF-001; restrict to known search provider patterns.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SSRF-003] ZeroTier API raw proxy</h3><span class="badge badge-high">High</span></div>
+        <p><strong>Location:</strong> <code>route/v1/zerotier.go:20-67</code></p>
+        <p>Proxies arbitrary paths to local ZeroTier API using <code>/var/lib/zerotier-one/authtoken.secret</code>. Attacker can join networks or modify controller config.</p>
+        <p><strong>Fix:</strong> Replace with narrow validated wrapper endpoints; do not expose raw ZT API.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[INJ-001] Command injection via network interface name</h3><span class="badge badge-high">High</span></div>
+        <p><strong>Location:</strong> <code>service/system.go:264</code></p>
+        <p><code>command.OnlyExec("... CatNetCardState " + name)</code> concatenates interface name into shell script invocation without quoting.</p>
+        <p><strong>Fix:</strong> Validate name against <code>^[a-zA-Z0-9._-]+$</code>; pass as quoted argument.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SEC-001] Hardcoded HMAC signing key</h3><span class="badge badge-high">High</span></div>
+        <p><strong>Location:</strong> <code>internal/sign/sign.go:35</code></p>
+        <pre>instance = sign.NewHMACSign([]byte("token"))</pre>
+        <p>Static key enables forging signed URLs if signing protects file/share access.</p>
+        <p><strong>Fix:</strong> Load per-installation key from secure store; rotate on install.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[DEFAULT-003] SSH credentials in URL query parameters</h3><span class="badge badge-high">High</span></div>
+        <p><strong>Location:</strong> <code>route/v1/ssh.go:53-55</code></p>
+        <p><code>GET /v1/sys/wsssh?username=&amp;password=&amp;port=</code> — credentials logged in access logs and browser history.</p>
+        <p><strong>Fix:</strong> Accept credentials via POST body over TLS; prefer SSH keys.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[AUTH-004] JWT token accepted in query string</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>route/v1.go:58-64</code>; <code>route/v2.go</code> file handler</p>
+        <p>Tokens leak via Referer, logs, and browser history. Combined with PATH-001 enables file download via leaked token.</p>
+        <p><strong>Fix:</strong> Accept tokens only via <code>Authorization: Bearer</code> header.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[CSRF-001] No CSRF protection; permissive CORS</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>route/v1.go:20-26</code></p>
+        <p><code>AllowOrigins: ["*"]</code> with <code>AllowCredentials: true</code> — invalid CORS combination. No CSRF tokens on state-changing endpoints.</p>
+        <p><strong>Fix:</strong> Explicit origin allowlist; CSRF tokens for browser flows; OAuth state binding.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SEC-002] Hardcoded Dropbox OAuth credentials</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>drivers/dropbox/meta.go:12-13</code></p>
+        <p>Default app key/secret shared across all CasaOS installations.</p>
+        <p><strong>Fix:</strong> Per-installation OAuth client registration.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[DEFAULT-002] WebSocket origin validation disabled</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>route/v1/ssh.go:23-27</code>; <code>route/v1/file.go:69-73</code></p>
+        <p><code>CheckOrigin: func(r *http.Request) bool { return true }</code> — cross-site WebSocket hijacking possible.</p>
+        <p><strong>Fix:</strong> Validate Origin against CasaOS UI allowlist.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[DOCKER-001] Unrestricted rclone unix socket access</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>pkg/utils/httper/drive.go:47-86</code></p>
+        <p>Cloud mount endpoints invoke rclone RC API via <code>/var/run/rclone/rclone.sock</code>. With AUTH-001, attacker mounts attacker-controlled remotes or reads stored tokens.</p>
+        <p><strong>Fix:</strong> Restrict socket permissions; validate mount paths; require strong auth.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[DEFAULT-004] Startup script execution from config directory</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>main.go:201-202</code></p>
+        <p><code>command.ExecuteScripts(/etc/casaos/start.d)</code> — writable via PATH-002 yields persistent code execution on restart.</p>
+        <p><strong>Fix:</strong> Restrict directory permissions; sign scripts or use systemd with integrity checks.</p>
+      </article>
+    </section>
+
+    <section id="low-info">
+      <h2>Low &amp; Informational Findings</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Severity</th><th>Issue</th><th>Fix / Note</th></tr></thead>
+        <tbody>
+          <tr><td>INFO-001</td><td><span class="badge badge-low">Low</span></td><td>Debug <code>GetFileTest</code> serves <code>/DATA/test.img</code></td><td>Remove from production builds (<code>route/v2/file.go:13-18</code>)</td></tr>
+          <tr><td>AUTH-005</td><td><span class="badge badge-medium">Medium</span></td><td>OpenAPI HTML/YAML docs at <code>/doc/v2/casaos</code> without auth</td><td>Require auth or disable in production</td></tr>
+          <tr><td>INJ-003</td><td><span class="badge badge-medium">Medium</span></td><td>Multipart upload uses client <code>path</code> header</td><td>Server-side upload directory only (<code>route/v1/file.go:613-617</code>)</td></tr>
+          <tr><td>DB-OK</td><td><span class="badge badge-info">Info</span></td><td>GORM uses parameterized queries</td><td>Positive — <code>service/connections.go:44</code></td></tr>
+          <tr><td>REBOOT-OK</td><td><span class="badge badge-info">Info</span></td><td>Reboot/shutdown use fixed exec args</td><td>Positive — <code>service/system.go:536-547</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="verified-safe">
+      <h2>Verified Safe Controls</h2>
+      <ul class="safe-list">
+        <li><strong>Main service binds localhost only</strong> — <code>main.go:129</code> uses <code>LOCALHOST = "127.0.0.1"</code> (defense in depth if Gateway is compromised)</li>
+        <li><strong>HTTP slowloris mitigation</strong> — <code>ReadHeaderTimeout: 5s</code> on server</li>
+        <li><strong>ECDSA JWT validation (when not skipped)</strong> — <code>jwt.Validate</code> with public key from runtime path</li>
+        <li><strong>Path traversal helpers available</strong> — <code>JoinBasePath</code> rejects <code>../</code> (needs adoption in handlers)</li>
+        <li><strong>GORM parameterized DB queries</strong> — <code>Where("id = ?", id)</code> in connections service</li>
+        <li><strong>System reboot/shutdown use fixed args</strong> — <code>exec.Command("init", "6")</code> without user input</li>
+        <li><strong>Samba connection list omits passwords</strong> — selective field return in API responses</li>
+      </ul>
+    </section>
+
+    <section id="owasp">
+      <h2>OWASP Top 10 (2021) Coverage</h2>
+      <table>
+        <thead><tr><th>Category</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>A01 Broken Access Control</td><td><span class="badge badge-fail">Fail</span></td><td>AUTH-001 JWT bypass; PATH-001/002 unrestricted filesystem</td></tr>
+          <tr><td>A02 Cryptographic Failures</td><td><span class="badge badge-fail">Fail</span></td><td>SEC-001 hardcoded HMAC; AUTH-004 token in URL; SSH creds in query</td></tr>
+          <tr><td>A03 Injection</td><td><span class="badge badge-fail">Fail</span></td><td>INJ-001 shell concat; INJ-002 curl|bash RCE</td></tr>
+          <tr><td>A04 Insecure Design</td><td><span class="badge badge-fail">Fail</span></td><td>Gateway+localhost auth model; Samba guest+root defaults</td></tr>
+          <tr><td>A05 Security Misconfiguration</td><td><span class="badge badge-fail">Fail</span></td><td>AUTH-002 debug; DEFAULT-001 Samba; CORS misconfig</td></tr>
+          <tr><td>A06 Vulnerable Components</td><td><span class="badge badge-medium">Partial</span></td><td>Echo, GORM, websocket deps — CVE scan not performed</td></tr>
+          <tr><td>A07 Identification &amp; Auth Failures</td><td><span class="badge badge-fail">Fail</span></td><td>AUTH-001 effective no-auth on all Gateway traffic</td></tr>
+          <tr><td>A08 Software &amp; Data Integrity</td><td><span class="badge badge-fail">Fail</span></td><td>INJ-002 unsigned remote update script</td></tr>
+          <tr><td>A09 Security Logging &amp; Monitoring</td><td><span class="badge badge-medium">Partial</span></td><td>Echo Logger middleware; SSH creds may appear in logs</td></tr>
+          <tr><td>A10 SSRF</td><td><span class="badge badge-fail">Fail</span></td><td>SSRF-001, SSRF-002, SSRF-003</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="out-of-scope">
+      <h2>Out of Scope &amp; Assumptions</h2>
+      <ul>
+        <li>No dynamic penetration testing or production deployment access</li>
+        <li>JWT/Gateway implementation in <code>CasaOS-Common</code> reviewed only via integration patterns in this repo</li>
+        <li>Dependency CVE database not exhaustively scanned — recommend <code>govulncheck</code> / OSV in CI</li>
+        <li>CasaOS-Gateway, CasaOS-UI, and CasaOS-AppStore repositories not fully audited</li>
+        <li>Assumed typical home-server deployment: single administrator, LAN-trusted — not multi-tenant adversarial isolation</li>
+        <li>Review based on repository state at clone time (main branch, 2026-05-28)</li>
+      </ul>
+      <p>Report vulnerabilities via the project's <a href="https://github.com/IceWhaleTech/CasaOS/security">GitHub Security</a> process.</p>
+    </section>
+
+    <section id="next-steps">
+      <h2>Recommended Next Steps</h2>
+      <h3>Deployment blockers (mandatory)</h3>
+      <ol>
+        <li>Remove JWT localhost Skipper and verify auth end-to-end through Gateway (AUTH-001)</li>
+        <li>Enforce filesystem jail on all file endpoints using existing <code>JoinBasePath</code> helpers (PATH-001, PATH-002, PATH-003)</li>
+        <li>Replace <code>curl | bash</code> updates with signed packages (INJ-002)</li>
+        <li>Disable or restrict SSRF endpoints and ZeroTier raw proxy (SSRF-001, SSRF-002, SSRF-003)</li>
+        <li>Fix Samba defaults — no anonymous guest write with force user root (DEFAULT-001)</li>
+      </ol>
+      <h3>Recommended (non-blocking)</h3>
+      <ol>
+        <li>Remove or protect <code>/v1/sys/debug</code> and public version endpoints (AUTH-002, AUTH-003)</li>
+        <li>Remove query-string JWT acceptance (AUTH-004)</li>
+        <li>Rotate hardcoded HMAC and OAuth secrets (SEC-001, SEC-002)</li>
+        <li>Fix CORS configuration; add CSRF for browser flows (CSRF-001)</li>
+        <li>Run <code>govulncheck ./...</code> in CI (A06)</li>
+        <li>Re-run this review after auth and filesystem fixes land</li>
+      </ol>
+      <p style="margin-top:2rem;color:var(--muted);font-size:0.85rem">
+        Generated by Security Reviewer agent workflow · Skills: security-review-methodology, business-logic-authentication, business-logic-authorization, business-logic-csrf, source-sink-injection, source-sink-ssrf, secrets-detection, api-security-review, owasp-top-10-review, security-review-report
+      </p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

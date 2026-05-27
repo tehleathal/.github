@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Review Report — tehleathal/sagent-v1.00</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e6edf3;
+      --muted: #8b9cb3;
+      --border: #303d52;
+      --critical: #ff6b6b;
+      --high: #ff9f43;
+      --medium: #feca57;
+      --low: #54a0ff;
+      --info: #5f27cd;
+      --pass: #1dd1a1;
+      --link: #48dbfb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    .layout { display: flex; min-height: 100vh; }
+    nav {
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    nav h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 1.25rem 0 0.5rem; }
+    nav h2:first-child { margin-top: 0; }
+    nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.35rem 0;
+      font-size: 0.875rem;
+    }
+    nav a:hover { color: var(--link); }
+    main { flex: 1; padding: 2.5rem 3rem; max-width: 960px; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .meta a { color: var(--link); }
+    h2 { font-size: 1.35rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+    p { margin-bottom: 1rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-critical { background: rgba(255,107,107,0.2); color: var(--critical); }
+    .badge-high { background: rgba(255,159,67,0.2); color: var(--high); }
+    .badge-medium { background: rgba(254,202,87,0.2); color: var(--medium); }
+    .badge-low { background: rgba(84,160,255,0.2); color: var(--low); }
+    .badge-info { background: rgba(95,39,205,0.2); color: #a29bfe; }
+    .badge-pass { background: rgba(29,209,161,0.2); color: var(--pass); }
+    .recommendation {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--high);
+      padding: 1.25rem 1.5rem;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+    }
+    .recommendation.block { border-left-color: var(--critical); }
+    .recommendation.approve-fixes { border-left-color: var(--medium); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: var(--surface2); color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .finding {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .finding-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .finding-header h3 { margin: 0; flex: 1; min-width: 200px; }
+    .finding-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+    .finding-meta dt { color: var(--muted); }
+    .finding-meta dd { font-family: ui-monospace, monospace; }
+    pre, code {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 0.82rem;
+    }
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+    code { color: #7ee787; }
+    .section-intro { color: var(--muted); margin-bottom: 1rem; }
+    ul, ol { margin: 0.5rem 0 1rem 1.5rem; }
+    li { margin-bottom: 0.35rem; }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin: 1.5rem 0; }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat .num { font-size: 1.75rem; font-weight: 700; }
+    .stat .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+    .stat-critical .num { color: var(--critical); }
+    .stat-high .num { color: var(--high); }
+    .stat-medium .num { color: var(--medium); }
+    .stat-low .num { color: var(--low); }
+    .stat-info .num { color: #a29bfe; }
+    .safe-list li { color: var(--pass); }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      nav { width: 100%; height: auto; position: relative; }
+      main { padding: 1.5rem; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      nav { display: none; }
+      .finding, table th { background: #f5f5f5; }
+      pre { background: #eee; border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <h2>Report</h2>
+    <a href="#executive">Executive Summary</a>
+    <a href="#scope">Scope &amp; Architecture</a>
+    <a href="#threat-model">Threat Model</a>
+    <a href="#summary-table">Findings Summary</a>
+    <h2>Findings</h2>
+    <a href="#critical-high">Critical &amp; High</a>
+    <a href="#AUTH-001">AUTH-001 Anthropic proxy exempt</a>
+    <a href="#SSRF-001">SSRF-001 Paid-API proxy abuse</a>
+    <a href="#IAC-001">IAC-001 WebUI host bind</a>
+    <a href="#medium">Medium</a>
+    <a href="#low-info">Low &amp; Info</a>
+    <a href="#verified-safe">Verified Safe</a>
+    <h2>Analysis</h2>
+    <a href="#owasp">OWASP Top 10</a>
+    <a href="#out-of-scope">Out of Scope</a>
+    <a href="#next-steps">Next Steps</a>
+  </nav>
+
+  <main>
+    <h1>Security Review Report</h1>
+    <p class="meta">
+      <strong>Target:</strong> <a href="https://github.com/tehleathal/sagent-v1.00" target="_blank" rel="noopener">tehleathal/sagent-v1.00</a> (full repository audit, v0.2.0)<br>
+      <strong>Reviewer:</strong> Security Reviewer agent (<code>.github/agents/security-reviewer.agent.md</code>)<br>
+      <strong>Date:</strong> 2026-05-28<br>
+      <strong>Method:</strong> Static adversarial code review — <code>security-review-methodology</code>, domain skills (auth, authz, CSRF, injection, XSS, SSRF, secrets, dependencies, IaC), OWASP baseline, <code>security-review-report</code> format
+    </p>
+
+    <section id="executive">
+      <h2>Executive Summary</h2>
+      <p>
+        <strong>Sagent</strong> is a self-hosted, single-operator Telegram front-end for Claude Code: a Python supervisor (FastMCP/Starlette on :8081),
+        a Python runner (Claude Agent SDK on :8082), a SvelteKit operator WebUI (:8086 host default), optional n8n/graphiti MCP integrations,
+        Squid egress allowlisting, and a 13-service Docker Compose stack with deliberate east-west network segmentation.
+        The project explicitly models <strong>one trusted operator</strong> — not multi-tenant adversarial isolation.
+      </p>
+      <p>
+        The codebase demonstrates strong security engineering for its threat model: OAuth credentials isolated on the supervisor with a stub decoy on the runner,
+        default-deny tool permissions with Telegram per-call approval, env scrub allowlists, unified secret redaction, prompt-guard Unicode smuggling defense,
+        hard Anthropic spend caps, constant-time secret comparison, and container capability baselines (<code>cap_drop: ALL</code>, read-only rootfs on most services).
+        Residual risk concentrates in <strong>intentional network-trust boundaries</strong> (auth-exempt Anthropic proxy reachable from <code>core</code>/<code>external</code> peers)
+        and <strong>deployment misconfiguration</strong> (WebUI published on all host interfaces without TLS, unauthenticated internal status endpoint).
+      </p>
+
+      <div class="recommendation approve-fixes">
+        <strong>Recommendation: Approve with fixes — suitable for intended single-operator self-hosting; do not expose WebUI or weaken network segmentation without mandatory hardening.</strong>
+        <p style="margin:0.75rem 0 0">No Critical findings in the default compose path. High findings are exploitable when a trusted-tier container (n8n, graphiti-mcp) is compromised or when the WebUI is reachable from untrusted networks without TLS. Bind WebUI to loopback, enable TLS + secure cookies for LAN access, and treat n8n workflows as tier-1 trusted code.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat stat-critical"><div class="num">0</div><div class="label">Critical</div></div>
+        <div class="stat stat-high"><div class="num">3</div><div class="label">High</div></div>
+        <div class="stat stat-medium"><div class="num">5</div><div class="label">Medium</div></div>
+        <div class="stat stat-low"><div class="num">4</div><div class="label">Low</div></div>
+        <div class="stat stat-info"><div class="num">6</div><div class="label">Info</div></div>
+      </div>
+    </section>
+
+    <section id="scope">
+      <h2>Scope &amp; Architecture</h2>
+      <p class="section-intro">Full-repository review of <code>tehleathal/sagent-v1.00</code> (shallow clone, commit <code>1b29a234</code>, 2026-05-10). Application source under <code>src/</code> (53 modules), <code>runner/</code>, <code>webui/src/</code>, infrastructure (<code>docker-compose.yml</code>, <code>infra/</code>), tests, and docs/ADRs.</p>
+
+      <table>
+        <thead><tr><th>Component</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Runtime</td><td>Python 3.11+ (supervisor/runner), Node/SvelteKit 2 (webui), Docker Compose 13 services / 6 networks</td></tr>
+          <tr><td>Supervisor</td><td>Telegram long-poll, in-process Telegram MCP, approval broker, Anthropic OAuth proxy, spend meter, webui API, Grafana webhook (<code>src/</code>, :8081)</td></tr>
+          <tr><td>Runner</td><td>Claude Agent SDK session holder, subprocess <code>claude</code> CLI, RPC callbacks to supervisor (<code>runner/</code>, :8082)</td></tr>
+          <tr><td>WebUI</td><td>SvelteKit operator dashboard; HMAC session + CSRF; reads <code>/sagent-data</code> RO (<code>webui/</code>)</td></tr>
+          <tr><td>Integrations</td><td>n8n workflows (optional), graphiti-mcp + FalkorDB graph memory, Squid egress, Caddy east-west gateways</td></tr>
+          <tr><td>Authentication</td><td>Telegram <code>ALLOWED_USER_IDS</code>; <code>X-Sagent-RPC</code> (supervisor/runner); <code>X-Webui-Token</code> (webui mutations); <code>WEBUI_PASSPHRASE</code> HMAC cookie; Grafana Bearer webhook</td></tr>
+          <tr><td>Isolation</td><td>Network segmentation (runner on <code>core</code> only); Squid domain allowlist; path-scoped Caddy; default-deny tool approvals</td></tr>
+          <tr><td>Trust boundaries</td><td>Internet → Telegram API (outbound only); LAN → WebUI host port; <code>core</code> → supervisor; <code>external</code> → Anthropic proxy; Operator → Telegram approval taps</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Data flows reviewed</h3>
+      <pre>Telegram message → ALLOWED_USER_IDS gate → agent session → tool call
+  → permissions.py force-prompt / approval broker → operator inline keyboard
+Runner claude CLI → ANTHROPIC_BASE_URL=http://supervisor:8081/v1/anthropic (no RPC header)
+  → anthropic_proxy.py substitutes OAuth bearer → api.anthropic.com (spend meter)
+n8n/graphiti (external net) → POST /v1/anthropic/* (RPC middleware exempt)
+WebUI session → GET /v1/webui/status (no token) + POST mutations (X-Webui-Token)
+Runner HTTP(S) → squid:3128 → internet (domain regex allowlist + approval broker)</pre>
+    </section>
+
+    <section id="threat-model">
+      <h2>Threat Model Summary</h2>
+      <table>
+        <thead><tr><th>STRIDE</th><th>Applicable threat</th><th>Priority</th></tr></thead>
+        <tbody>
+          <tr><td>Spoofing</td><td>Telegram sender outside <code>ALLOWED_USER_IDS</code>; stolen <code>WEBUI_PASSPHRASE</code> session; forged RPC if secret leaked</td><td><span class="badge badge-high">High</span></td></tr>
+          <tr><td>Tampering</td><td>Prompt injection → tool abuse; n8n workflow calling Anthropic proxy; config mutation via webui POST</td><td><span class="badge badge-high">High</span></td></tr>
+          <tr><td>Information disclosure</td><td><code>GET /v1/webui/status</code> metadata; agent Read/Grep of workspace; audit log on volume</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          <tr><td>Denial of service</td><td>Anthropic spend cap limits cost DoS; session queue bounds; login rate limit in-memory only</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          <tr><td>Elevation of privilege</td><td>Compromised n8n/graphiti → unconstrained Anthropic API at operator cost; operator-approved sudo/bash</td><td><span class="badge badge-high">High</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>App-specific review guidelines</h3>
+      <ol>
+        <li>Every HTTP handler outside RPC middleware exemptions must enforce the correct secret (<code>X-Sagent-RPC</code>, <code>X-Webui-Token</code>, or Grafana Bearer) at the handler layer (<code>src/telegram_mcp_server.py:173-221</code>).</li>
+        <li>Compromise of any container on <code>external</code> network is equivalent to Anthropic API access at operator subscription cost — treat n8n and graphiti-mcp as tier-1 trusted (<code>docker-compose.yml:285-286</code>).</li>
+        <li>Telegram ingress must restrict to <code>ALLOWED_USER_IDS</code> — never empty in production compose.</li>
+        <li>WebUI host port mapping should bind <code>127.0.0.1</code> unless TLS + <code>WEBUI_SECURE_COOKIES=1</code> are configured (<code>docker-compose.yml:623-625</code>).</li>
+        <li>All tool calls touching credentials, <code>/proc/*/environ</code>, or <code>/run/secrets/**</code> must hit <code>SUPERVISOR_FORCE_PROMPT_RULES</code> (<code>src/permissions.py:58-84</code>).</li>
+        <li>Runner outbound must stay on Squid allowlist — never set <code>SAGENT_DEV_PROXY_ALLOW_ALL</code> in production.</li>
+        <li>New <code>/v1/webui/*</code> mutation routes must call <code>_require_webui_auth</code> — middleware does not gate the mount (<code>src/webui_routes.py:220-244</code>).</li>
+      </ol>
+    </section>
+
+    <section id="summary-table">
+      <h2>Findings Summary</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Severity</th><th>Category</th><th>Title</th></tr></thead>
+        <tbody>
+          <tr><td>AUTH-001</td><td><span class="badge badge-high">High</span></td><td>Authentication</td><td>Anthropic proxy exempt from RPC middleware</td></tr>
+          <tr><td>SSRF-001</td><td><span class="badge badge-high">High</span></td><td>SSRF / API abuse</td><td>Internal peers can invoke paid Anthropic API without RPC secret</td></tr>
+          <tr><td>IAC-001</td><td><span class="badge badge-high">High</span></td><td>IaC</td><td>WebUI host port not loopback-scoped by default</td></tr>
+          <tr><td>AUTH-002</td><td><span class="badge badge-medium">Medium</span></td><td>Authentication</td><td>Unauthenticated GET /v1/webui/status information disclosure</td></tr>
+          <tr><td>INJ-003</td><td><span class="badge badge-medium">Medium</span></td><td>Path / exfiltration</td><td>Telegram reply tool reads absolute paths without workspace jail</td></tr>
+          <tr><td>SEC-001</td><td><span class="badge badge-medium">Medium</span></td><td>Secrets</td><td>CTG_SKIP_ENV_SCRUB bypasses env scrub entirely</td></tr>
+          <tr><td>SSRF-002</td><td><span class="badge badge-medium">Medium</span></td><td>SSRF</td><td>SAGENT_DEV_PROXY_ALLOW_ALL dev-only egress wildcard</td></tr>
+          <tr><td>DEPS-001</td><td><span class="badge badge-medium">Medium</span></td><td>Dependencies</td><td>Supply chain — no exhaustive CVE scan in CI</td></tr>
+          <tr><td>AUTH-004</td><td><span class="badge badge-low">Low</span></td><td>CSRF</td><td>SvelteKit csrf.trustedOrigins: ['*']</td></tr>
+          <tr><td>AUTH-005</td><td><span class="badge badge-low">Low</span></td><td>Authentication</td><td>RPC secret may persist to data/.rpc_secret</td></tr>
+          <tr><td>AUTH-006</td><td><span class="badge badge-low">Low</span></td><td>Authentication</td><td>WebUI login rate limit in-process only</td></tr>
+          <tr><td>IAC-003</td><td><span class="badge badge-low">Low</span></td><td>IaC</td><td>WebUI direct FalkorDB RESP on graphiti-backend network</td></tr>
+          <tr><td>AUTH-007</td><td><span class="badge badge-info">Info</span></td><td>Authentication</td><td>Webui mount exemption requires per-handler auth discipline</td></tr>
+          <tr><td>INJ-001</td><td><span class="badge badge-info">Info</span></td><td>Injection</td><td>No SQL/ORM layer — N/A</td></tr>
+          <tr><td>INJ-002</td><td><span class="badge badge-info">Info</span></td><td>Injection</td><td>No eval/pickle/yaml.load in runtime paths</td></tr>
+          <tr><td>XSS-001</td><td><span class="badge badge-info">Info</span></td><td>XSS</td><td>No innerHTML/@html sinks; CSP enforced</td></tr>
+          <tr><td>SEC-002</td><td><span class="badge badge-info">Info</span></td><td>Secrets</td><td>Bundled skill scripts use shell=True (agent-only)</td></tr>
+          <tr><td>CRED-001</td><td><span class="badge badge-info">Info</span></td><td>Secrets</td><td>No live credentials in repository</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="critical-high">
+      <h2>Critical &amp; High Findings</h2>
+      <p class="section-intro">No Critical findings identified in default compose configuration. Supervisor and runner are not host-port published; Telegram uses outbound long-poll only. High findings below become Critical if network segmentation fails or WebUI is exposed to the public internet without TLS.</p>
+
+      <article class="finding" id="AUTH-001">
+        <div class="finding-header">
+          <h3>[AUTH-001] Anthropic proxy exempt from RPC middleware</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Authentication / Trust boundary</dd></div>
+          <div><dt>Location</dt><dd>src/telegram_mcp_server.py:209-221</dd></div>
+          <div><dt>CWE</dt><dd>CWE-306, CWE-862</dd></div>
+        </dl>
+        <p><strong>Description.</strong> The RPC auth middleware exempts all paths under <code>/v1/anthropic/*</code> because the Claude CLI subprocess cannot inject <code>X-Sagent-RPC</code>. Access control relies entirely on Docker network segmentation: any container attached to <code>core</code> or <code>external</code> can call the proxy. The proxy substitutes the operator's real OAuth bearer server-side (<code>src/anthropic_proxy.py</code>), billing the operator's Anthropic subscription.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>exempt = (
+    path == "/v1/health"
+    or path == "/v1/anthropic"
+    or path.startswith("/v1/anthropic/")
+    or path == "/v1/webui/status"
+    or path.startswith("/v1/webui/")
+    ...
+)
+# Middleware comment (lines 179-184):
+# Why the proxy is exempt: ... the CLI cannot inject the
+# sagent-internal X-Sagent-RPC header. The network boundary is the access control.</pre>
+        <p><strong>Exploit scenario.</strong></p>
+        <ol>
+          <li>Attacker compromises n8n (on <code>external</code> network per <code>docker-compose.yml:294-296</code>) via a malicious workflow import or supply-chain package.</li>
+          <li>Workflow HTTP node sends <code>POST http://supervisor:8081/v1/anthropic/v1/messages</code> with arbitrary model/prompt — no RPC secret required.</li>
+          <li>Proxy forwards with operator OAuth; spend meter accrues cost until cap triggers — but cap is tunable and may be set high.</li>
+        </ol>
+        <p><strong>Remediation.</strong> Add per-source authentication (e.g. mTLS or source-specific HMAC headers for n8n/graphiti); restrict <code>external</code> network membership; network-policy deny from n8n to <code>/v1/anthropic/*</code> if workflows do not require direct API access; document n8n as tier-1 trusted code with workflow signing review.</p>
+        <p><strong>Verification.</strong> From n8n container, confirm Anthropic proxy calls are blocked or require additional auth; <code>tests/test_anthropic_proxy.py</code> continues to pass for runner path.</p>
+      </article>
+
+      <article class="finding" id="SSRF-001">
+        <div class="finding-header">
+          <h3>[SSRF-001] Auth-exempt Anthropic proxy enables paid-API abuse from internal peers</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>SSRF / API abuse</dd></div>
+          <div><dt>Location</dt><dd>src/anthropic_proxy.py; docker-compose.yml:285-286</dd></div>
+          <div><dt>CWE</dt><dd>CWE-918</dd></div>
+        </dl>
+        <p><strong>Description.</strong> Same root cause as AUTH-001, classified separately as SSRF-to-paid-API: internal containers can force the supervisor to make outbound Anthropic API calls on their behalf. This is not classic URL-fetch SSRF (no arbitrary URL parameter) but functionally equivalent for cost/abuse and data exfil via model prompts.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre># docker-compose.yml:285-286
+# n8n can call auth-exempt /v1/anthropic/* via the external network —
+# use only trusted workflows (ADR 0012 → 0023; n8n is now isolated from the runner).</pre>
+        <p><strong>Exploit scenario.</strong> Compromised graphiti-mcp container (also on <code>external</code>) loops high-token requests through the proxy, exhausting operator quota or triggering spend-cap session cycling as a DoS side effect.</p>
+        <p><strong>Remediation.</strong> Per-source rate limits on proxy (<code>X-Sagent-Source</code> tagging if present); separate OAuth scopes or API keys per integration tier; fail-closed network ACLs.</p>
+        <p><strong>Verification.</strong> Integration test from non-runner <code>external</code> container returns 401/403 after fix; spend meter logs attribute requests by source.</p>
+      </article>
+
+      <article class="finding" id="IAC-001">
+        <div class="finding-header">
+          <h3>[IAC-001] WebUI host port not loopback-scoped by default</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Infrastructure / Misconfiguration</dd></div>
+          <div><dt>Location</dt><dd>docker-compose.yml:623-625; webui/server.js:16-40</dd></div>
+          <div><dt>CWE</dt><dd>CWE-16, CWE-319</dd></div>
+        </dl>
+        <p><strong>Description.</strong> Unlike n8n-gw (<code>127.0.0.1:5678:5678</code>) and grafana-gw, the WebUI publishes <code>"${WEBUI_PORT:-8086}:3000"</code> on all host interfaces. The container binds <code>0.0.0.0</code> by default. Plain HTTP is allowed when <code>WEBUI_ALLOW_PLAIN_HTTP=1</code> (documented in compose comments). Session cookies use <code>secure: false</code> unless <code>WEBUI_SECURE_COOKIES=1</code>.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre># docker-compose.yml
+ports:
+  - "${WEBUI_PORT:-8086}:3000"
+  - "${WEBUI_HTTPS_HOST_PORT:-8443}:3443"
+
+# webui/server.js — container listens on 0.0.0.0; startup guard only
+# blocks non-loopback plain HTTP unless WEBUI_ALLOW_PLAIN_HTTP=1</pre>
+        <p><strong>Exploit scenario.</strong></p>
+        <ol>
+          <li>Operator deploys on a VPS with default compose; WebUI listens on <code>0.0.0.0:8086</code> reachable from the public internet if security group allows.</li>
+          <li>Attacker on same LAN sniffs HTTP session cookie (no Secure flag with default TLS off).</li>
+          <li>Attacker uses stolen session to access operator dashboard, toggle MCP servers, approve pending requests if RPC secret configured, read FalkorDB graph summaries.</li>
+        </ol>
+        <p><strong>Remediation.</strong> Change default to <code>"127.0.0.1:${WEBUI_PORT:-8086}:3000"</code>; document Tailscale/SSH tunnel for remote access; set <code>WEBUI_TLS=1</code> and <code>WEBUI_SECURE_COOKIES=1</code> as production defaults in <code>.env.example</code>.</p>
+        <p><strong>Verification.</strong> <code>docker compose config</code> shows loopback bind; external port scan shows closed unless explicitly configured; cookies have Secure flag when TLS enabled.</p>
+      </article>
+    </section>
+
+    <section id="medium">
+      <h2>Medium Findings</h2>
+
+      <article class="finding" id="AUTH-002">
+        <div class="finding-header"><h3>[AUTH-002] Unauthenticated GET /v1/webui/status</h3><span class="badge badge-medium">Medium</span></div>
+        <dl class="finding-meta">
+          <div><dt>Location</dt><dd>src/webui_routes.py:286-365, 561</dd></div>
+          <div><dt>CWE</dt><dd>CWE-200</dd></div>
+        </dl>
+        <p><strong>Description.</strong> Returns version, supervisor uptime, service probe states, credential <em>presence</em> flags (telegram, OpenAI, Claude OAuth, RPC secret), MCP server names/types/URLs, and approval risk rules — without <code>X-Webui-Token</code>. Intentional per ADR 0021 for dashboard polling, but any <code>core</code> network peer can enumerate operational metadata.</p>
+        <pre>keys: dict[str, dict[str, Any]] = {
+    "telegram_bot_token": {"present": bool(config.bot_token), ...},
+    "openai_api_key": {"present": bool(config.openai_api_key), ...},
+    ...
+}
+mcp_servers[name] = {"type": ..., "enabled": ..., "url": entry.get("url")}</pre>
+        <p><strong>Fix:</strong> Require <code>X-Webui-Token</code> for all <code>/v1/webui/*</code> including GET status; or restrict supervisor :8081 to webui-only network attachment; or serve status via unix socket.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[INJ-003] Telegram reply tool reads absolute paths</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/telegram_mcp_server.py:332-364</code></p>
+        <p>Agent-supplied file paths in <code>reply(files=[...])</code> are opened as absolute paths on the supervisor or fetched from runner. Sensitive paths are blocked by <code>SUPERVISOR_FORCE_PROMPT_RULES</code> (<code>src/permissions.py:58-84</code>), but mis-approval or rule gaps could exfil supervisor-local files to Telegram.</p>
+        <p><strong>Fix:</strong> Restrict reply paths to runner workspace prefix; validate <code>Path.resolve()</code> stays under allowed roots before send.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SEC-001] CTG_SKIP_ENV_SCRUB bypass</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/env_scrub.py:77-100</code></p>
+        <pre>if env.get(_SKIP_VAR):
+    return []  # CTG_SKIP_ENV_SCRUB=1 bypasses scrub entirely</pre>
+        <p>Operator debug hatch bypasses env scrub allowlist. If set in production compose, subprocesses inherit full environment including secrets popped elsewhere.</p>
+        <p><strong>Fix:</strong> Fail boot if <code>CTG_SKIP_ENV_SCRUB</code> is set outside dev profile; log loud warning at minimum.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SSRF-002] Dev egress wildcard bypass</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/egress_broker.py</code>, ADR 0033</p>
+        <p><code>SAGENT_DEV_PROXY_ALLOW_ALL</code> inserts wildcard domain regex into Squid allowlist. In-process approval broker still gates new domains, but network-layer allowlist is weakened. Must never be enabled in production.</p>
+        <p><strong>Fix:</strong> Compose profile gate (<code>profiles: [dev]</code>); refuse start if set without explicit dev flag.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[DEPS-001] Supply chain audit gap</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>pyproject.toml</code>, <code>webui/package.json</code>, pinned images in <code>docker-compose.yml</code></p>
+        <p>Python deps include <code>fastmcp==3.2.4</code>, <code>claude-agent-sdk>=0.1.61</code>, <code>httpx</code>, <code>pyyaml</code>. Images pinned (<code>sagent-supervisor:0.2.0</code>, <code>n8nio/n8n:1.119.1</code>, <code>caddy:2.11-alpine</code>). No exhaustive CVE scan performed in this review; pre-commit secret scanner present but not dependency audit.</p>
+        <p><strong>Fix:</strong> Add <code>pip audit</code> / <code>npm audit</code> / OSV-Scanner to CI; pin Python deps with hashes where feasible.</p>
+      </article>
+    </section>
+
+    <section id="low-info">
+      <h2>Low &amp; Informational Findings</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Severity</th><th>Issue</th><th>Fix / Note</th></tr></thead>
+        <tbody>
+          <tr><td>AUTH-004</td><td><span class="badge badge-low">Low</span></td><td><code>csrf.trustedOrigins: ['*']</code> in SvelteKit config</td><td>Relies on double-submit CSRF in <code>hooks.server.ts</code>; tighten origins when hostnames are stable</td></tr>
+          <tr><td>AUTH-005</td><td><span class="badge badge-low">Low</span></td><td>Auto-generated RPC secret written to <code>data/.rpc_secret</code> (mode 0600)</td><td>Prefer ephemeral boot-time secret; document rotation</td></tr>
+          <tr><td>AUTH-006</td><td><span class="badge badge-low">Low</span></td><td>Login lockout 5 fails / 60s per IP in-memory</td><td>Resets on container restart; use Redis for multi-replica</td></tr>
+          <tr><td>IAC-003</td><td><span class="badge badge-low">Low</span></td><td>WebUI reaches FalkorDB:6379 on <code>graphiti-backend</code> network</td><td>Session-gated; no Redis AUTH — relies on network ACL</td></tr>
+          <tr><td>AUTH-007</td><td><span class="badge badge-info">Info</span></td><td>New <code>/v1/webui/*</code> routes must call <code>_require_webui_auth</code></td><td>Documented footgun; all current POST handlers verified</td></tr>
+          <tr><td>INJ-001</td><td><span class="badge badge-info">Info</span></td><td>No SQL/ORM — FalkorDB uses parameterized RESP bulk args</td><td>Positive — N/A for SQLi</td></tr>
+          <tr><td>INJ-002</td><td><span class="badge badge-info">Info</span></td><td>No <code>eval</code>, <code>pickle</code>, <code>yaml.load</code> in runtime</td><td><code>ast.literal_eval</code> in test-oriented MCP paths only</td></tr>
+          <tr><td>XSS-001</td><td><span class="badge badge-info">Info</span></td><td>No <code>@html</code> / <code>innerHTML</code> in webui src</td><td>CSP: <code>script-src 'self'</code>, <code>frame-ancestors 'none'</code></td></tr>
+          <tr><td>SEC-002</td><td><span class="badge badge-info">Info</span></td><td>Bundled skill <code>with_server.py</code> uses <code>shell=True</code></td><td>Agent workspace only; not runtime server code</td></tr>
+          <tr><td>CRED-001</td><td><span class="badge badge-info">Info</span></td><td>No live secrets in repo; stub decoy in runner entrypoint</td><td><code>scripts/check-secrets-staged.sh</code> pre-commit scanner</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="verified-safe">
+      <h2>Verified Safe Controls</h2>
+      <ul class="safe-list">
+        <li><strong>Env scrub allowlists</strong> — <code>SAGENT_RPC_SECRET</code> popped before scrub on supervisor and runner (<code>src/env_scrub.py</code>, <code>runner/env_scrub.py</code>)</li>
+        <li><strong>OAuth isolation</strong> — Real bearer on supervisor only; runner gets stub decoy; proxy strips <code>x-sagent-rpc</code> (<code>docs/adrs/0009-long-lived-oauth-token.md</code>)</li>
+        <li><strong>Secret redaction</strong> — Unified <code>SECRET_PATTERNS</code> for logs and Telegram outbound (<code>src/secret_patterns.py</code>, <code>src/secret_redactor.py</code>)</li>
+        <li><strong>Default-deny permissions</strong> — Force-prompt rules for credentials, <code>/proc/*/environ</code>, sudo paths (<code>src/permissions.py:58-84</code>)</li>
+        <li><strong>Bash guard</strong> — Conservative read-only fast path (<code>src/bash_guard.py</code>)</li>
+        <li><strong>Prompt guard</strong> — Unicode tag-block smuggling stripped (<code>src/prompt_guard.py</code>)</li>
+        <li><strong>WebUI path safety</strong> — <code>safeJoin</code> traversal prevention (<code>webui/src/lib/server/sagent-data.ts</code>)</li>
+        <li><strong>Spend cap</strong> — Hard Anthropic proxy meter; never disabled (<code>docs/adrs/0028-anthropic-proxy-spend-cap.md</code>)</li>
+        <li><strong>Constant-time compares</strong> — RPC, webui token, Grafana bearer, passphrase login</li>
+        <li><strong>Telegram gate</strong> — <code>ALLOWED_USER_IDS</code> required; MCP chat gate on tools</li>
+        <li><strong>Container baseline</strong> — <code>cap_drop: ALL</code>, read-only rootfs, <code>no-new-privileges</code> on non-runner services</li>
+        <li><strong>Supervisor/runner not host-published</strong> — Default compose exposes only WebUI, n8n-gw, grafana-gw on loopback</li>
+        <li><strong>Grafana webhook</strong> — Fail-closed when <code>GRAFANA_WEBHOOK_SECRET</code> empty (<code>src/grafana_webhook.py</code>)</li>
+        <li><strong>East-west gateway</strong> — Caddy path-scoped proxy; non-MCP paths return 403 (<code>infra/caddy/runner-gw.Caddyfile</code>)</li>
+        <li><strong>Audit trail</strong> — Schema-versioned <code>decisions.jsonl</code> for every gated tool decision</li>
+      </ul>
+    </section>
+
+    <section id="owasp">
+      <h2>OWASP Top 10 (2021) Coverage</h2>
+      <table>
+        <thead><tr><th>Category</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>A01 Broken Access Control</td><td><span class="badge badge-medium">Partial</span></td><td>Single-operator model; AUTH-001 proxy trust; AUTH-002 status leak; strong Telegram/RPC gates elsewhere</td></tr>
+          <tr><td>A02 Cryptographic Failures</td><td><span class="badge badge-pass">Pass</span></td><td>HMAC sessions; constant-time compares; TLS opt-in for WebUI; plain HTTP risk on misconfig (IAC-001)</td></tr>
+          <tr><td>A03 Injection</td><td><span class="badge badge-pass">Pass</span></td><td>No SQL; subprocess without shell=True; no unsafe deserialization</td></tr>
+          <tr><td>A04 Insecure Design</td><td><span class="badge badge-pass">Pass</span></td><td>Defense-in-depth by design (secret isolation, default-deny, segmentation); documented trust tradeoffs</td></tr>
+          <tr><td>A05 Security Misconfiguration</td><td><span class="badge badge-high">Partial</span></td><td>IAC-001 WebUI bind; SEC-001 env scrub bypass; dev egress wildcard</td></tr>
+          <tr><td>A06 Vulnerable Components</td><td><span class="badge badge-medium">Partial</span></td><td>DEPS-001 — pinned images; run CI audit</td></tr>
+          <tr><td>A07 Auth Failures</td><td><span class="badge badge-medium">Partial</span></td><td>Strong when secrets configured; proxy exemption by design</td></tr>
+          <tr><td>A08 Software/Data Integrity</td><td><span class="badge badge-pass">Pass</span></td><td>Read-only image-authoritative skills; schema-versioned audit log</td></tr>
+          <tr><td>A09 Logging &amp; Monitoring</td><td><span class="badge badge-pass">Pass</span></td><td>JSONL audit, Loki/Grafana stack, secret-redacted logs</td></tr>
+          <tr><td>A10 SSRF</td><td><span class="badge badge-medium">Partial</span></td><td>Squid constrains runner egress; SSRF-001 internal Anthropic proxy abuse path</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="out-of-scope">
+      <h2>Out of Scope &amp; Assumptions</h2>
+      <ul>
+        <li>No dynamic penetration testing, production deployment access, or runtime fuzzing</li>
+        <li>Prompt-injection-only chains without policy/approval bypass treated as out of scope — mitigated via default-deny tools and Telegram approval</li>
+        <li>Assumed single trusted operator per stack — not multi-tenant adversarial isolation</li>
+        <li>Claude model behavior and Anthropic API availability not reviewed</li>
+        <li>Dependency CVE database not exhaustively scanned — recommend <code>pip audit</code> and OSV-Scanner in CI</li>
+        <li>Review based on repository state at clone time (commit <code>1b29a234</code>, 2026-05-10, version 0.2.0)</li>
+        <li>Prior internal review at <code>docs/historical/security-review-2026-05-07.html</code> referenced for overlap; this report is independent</li>
+      </ul>
+    </section>
+
+    <section id="next-steps">
+      <h2>Recommended Next Steps</h2>
+      <h3>Before LAN or internet exposure</h3>
+      <ol>
+        <li>Bind WebUI to <code>127.0.0.1:8086:3000</code> or enable TLS + secure cookies (IAC-001)</li>
+        <li>Treat n8n workflows and graphiti-mcp as tier-1 trusted code; review imports regularly (AUTH-001, SSRF-001)</li>
+        <li>Ensure <code>ALLOWED_USER_IDS</code> is set and minimal</li>
+        <li>Never set <code>CTG_SKIP_ENV_SCRUB</code> or <code>SAGENT_DEV_PROXY_ALLOW_ALL</code> in production</li>
+      </ol>
+      <h3>Recommended (non-blocking)</h3>
+      <ol>
+        <li>Require <code>X-Webui-Token</code> on <code>GET /v1/webui/status</code> (AUTH-002)</li>
+        <li>Add per-source auth or rate limits on Anthropic proxy</li>
+        <li>Add dependency audit to CI (DEPS-001)</li>
+        <li>Restrict Telegram reply file paths to workspace roots (INJ-003)</li>
+        <li>Re-run security review after major auth/network/tool changes</li>
+      </ol>
+      <p style="margin-top:1.5rem;color:var(--muted);font-size:0.85rem">Report generated by Security Reviewer agent workflow. Open in browser for navigable findings. Related example reports: <code>example-reports/openclaw-security-review.html</code>, <code>example-reports/casaos-security-review.html</code>.</p>
+    </section>
+  </main>
+</div>
+</body>
+</html>
