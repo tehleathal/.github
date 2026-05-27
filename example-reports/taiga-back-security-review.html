@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Review Report — taigaio/taiga-back</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e6edf3;
+      --muted: #8b9cb3;
+      --border: #303d52;
+      --critical: #ff6b6b;
+      --high: #ff9f43;
+      --medium: #feca57;
+      --low: #54a0ff;
+      --info: #5f27cd;
+      --pass: #1dd1a1;
+      --link: #48dbfb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    .layout { display: flex; min-height: 100vh; }
+    nav {
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    nav h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 1.25rem 0 0.5rem; }
+    nav h2:first-child { margin-top: 0; }
+    nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.35rem 0;
+      font-size: 0.875rem;
+    }
+    nav a:hover { color: var(--link); }
+    main { flex: 1; padding: 2.5rem 3rem; max-width: 960px; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .meta a { color: var(--link); }
+    h2 { font-size: 1.35rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+    p { margin-bottom: 1rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-critical { background: rgba(255,107,107,0.2); color: var(--critical); }
+    .badge-high { background: rgba(255,159,67,0.2); color: var(--high); }
+    .badge-medium { background: rgba(254,202,87,0.2); color: var(--medium); }
+    .badge-low { background: rgba(84,160,255,0.2); color: var(--low); }
+    .badge-info { background: rgba(95,39,205,0.2); color: #a29bfe; }
+    .badge-pass { background: rgba(29,209,161,0.2); color: var(--pass); }
+    .recommendation {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--high);
+      padding: 1.25rem 1.5rem;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+    }
+    .recommendation.block { border-left-color: var(--critical); }
+    .recommendation.approve-fixes { border-left-color: var(--medium); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: var(--surface2); color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .finding {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .finding-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .finding-header h3 { margin: 0; flex: 1; min-width: 200px; }
+    .finding-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+    .finding-meta dt { color: var(--muted); }
+    .finding-meta dd { font-family: ui-monospace, monospace; }
+    pre, code {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 0.82rem;
+    }
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+    code { color: #7ee787; }
+    .section-intro { color: var(--muted); margin-bottom: 1rem; }
+    ul { margin: 0.5rem 0 1rem 1.5rem; }
+    li { margin-bottom: 0.35rem; }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin: 1.5rem 0; }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat .num { font-size: 1.75rem; font-weight: 700; }
+    .stat .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+    .stat-critical .num { color: var(--critical); }
+    .stat-high .num { color: var(--high); }
+    .stat-medium .num { color: var(--medium); }
+    .stat-low .num { color: var(--low); }
+    .stat-info .num { color: #a29bfe; }
+    .safe-list li { color: var(--pass); }
+    .toc-num { color: var(--muted); margin-right: 0.25rem; }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      nav { width: 100%; height: auto; position: relative; }
+      main { padding: 1.5rem; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      nav { display: none; }
+      .finding, table th { background: #f5f5f5; }
+      pre { background: #eee; border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <h2>Report</h2>
+    <a href="#executive">Executive Summary</a>
+    <a href="#scope">Scope &amp; Architecture</a>
+    <a href="#threat-model">Threat Model</a>
+    <a href="#summary-table">Findings Summary</a>
+    <h2>Findings</h2>
+    <a href="#critical-high">Critical &amp; High</a>
+    <a href="#medium">Medium</a>
+    <a href="#low-info">Low &amp; Info</a>
+    <a href="#verified-safe">Verified Safe</a>
+    <h2>Analysis</h2>
+    <a href="#owasp">OWASP Top 10</a>
+    <a href="#out-of-scope">Out of Scope</a>
+    <a href="#next-steps">Next Steps</a>
+  </nav>
+
+  <main>
+    <h1>Security Review Report</h1>
+    <p class="meta">
+      <strong>Target:</strong> <a href="https://github.com/taigaio/taiga-back" target="_blank" rel="noopener">taigaio/taiga-back</a> (main branch)<br>
+      <strong>Reviewer:</strong> Security Reviewer agent (<code>.github/agents/security-reviewer.agent.md</code>)<br>
+      <strong>Date:</strong> 2026-05-27<br>
+      <strong>Method:</strong> Static adversarial code review — methodology, domain skills, OWASP baseline, structured report format
+    </p>
+
+    <section id="executive">
+      <h2>Executive Summary</h2>
+      <p>
+        <strong>Taiga Backend</strong> is a Django 3.2 REST API for agile project management (stories, tasks, wiki, webhooks, VCS integrations).
+        The codebase implements solid <strong>project-scoped RBAC</strong>, JWT authentication with token denylist, parameterized SQL for search,
+        outbound webhook SSRF blocking by default, and markdown sanitization via bleach.
+      </p>
+      <p>
+        However, <strong>default configuration is unsafe for production</strong>: a hardcoded <code>SECRET_KEY</code>, wildcard
+        <code>ALLOWED_HOSTS</code>, default database/broker credentials, disabled API throttling, Celery pickle serialization, and
+        GitLab inbound webhooks that accept any source IP when <code>GITLAB_VALID_ORIGIN_IPS</code> is empty. Django 3.2 is end-of-life
+        and no longer receives security patches.
+      </p>
+
+      <div class="recommendation approve-fixes">
+        <strong>Recommendation: Approve with fixes — do not deploy to production without mandatory hardening.</strong>
+        <p style="margin:0.75rem 0 0">Block production deployment until Critical/High configuration and operational items are resolved. The application logic is generally sound; risk concentrates in deployment defaults and missing rate limits.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat stat-critical"><div class="num">1</div><div class="label">Critical</div></div>
+        <div class="stat stat-high"><div class="num">7</div><div class="label">High</div></div>
+        <div class="stat stat-medium"><div class="num">11</div><div class="label">Medium</div></div>
+        <div class="stat stat-low"><div class="num">5</div><div class="label">Low</div></div>
+        <div class="stat stat-info"><div class="num">8</div><div class="label">Info</div></div>
+      </div>
+    </section>
+
+    <section id="scope">
+      <h2>Scope &amp; Architecture</h2>
+      <p class="section-intro">Full-repository review of the public <code>taiga-back</code> codebase (not a PR diff).</p>
+
+      <table>
+        <thead><tr><th>Component</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Framework</td><td>Django 3.2.25, Python 3.10, PostgreSQL</td></tr>
+          <tr><td>API surface</td><td><code>/api/v1/</code> — custom DRF-like layer (<code>taiga/routers.py</code>)</td></tr>
+          <tr><td>Authentication</td><td>JWT Bearer (primary), Application tokens, Session (debug)</td></tr>
+          <tr><td>Authorization</td><td>Project membership + role permissions (<code>HasProjectPerm</code>)</td></tr>
+          <tr><td>Async</td><td>Celery + RabbitMQ (pickle serialization by default)</td></tr>
+          <tr><td>Trust boundaries</td><td>Internet → API; Internet → VCS webhooks; Taiga → outbound webhooks; Taiga → importers (GitHub/Jira/Trello/Asana)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Middleware chain</h3>
+      <pre>CORS → SessionID → Common → Locale → Security → <strong>CSRF</strong> → XFrameOptions → Session → Auth → Messages</pre>
+      <p>All API views are <code>@csrf_exempt</code> — appropriate for JWT Bearer auth; session auth in production would bypass CSRF protection.</p>
+    </section>
+
+    <section id="threat-model">
+      <h2>Threat Model Summary</h2>
+      <table>
+        <thead><tr><th>STRIDE</th><th>Applicable threat</th><th>Priority</th></tr></thead>
+        <tbody>
+          <tr><td>Spoofing</td><td>JWT forgery via default SECRET_KEY; forged VCS webhooks (GitLab IP bypass)</td><td><span class="badge badge-critical">Critical</span></td></tr>
+          <tr><td>Tampering</td><td>Unauthorized project data mutation via inbound hooks</td><td><span class="badge badge-high">High</span></td></tr>
+          <tr><td>Information disclosure</td><td>User enumeration (password recovery); public user listings</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          <tr><td>Denial of service</td><td>Unthrottled login/API abuse</td><td><span class="badge badge-high">High</span></td></tr>
+          <tr><td>Elevation of privilege</td><td>IDOR mitigated by project RBAC; hook secret compromise</td><td><span class="badge badge-medium">Medium</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>App-specific review guidelines</h3>
+      <ol>
+        <li>Every <code>/api/v1/*</code> handler must enforce authentication before side effects (JWT or explicit <code>AllowAny</code>).</li>
+        <li>Project ID in URLs must be authorized via <code>HasProjectPerm</code> or filter backends — never trust body alone.</li>
+        <li>Inbound VCS hooks (<code>github-hook</code>, <code>gitlab-hook</code>, etc.) are unauthenticated; verify HMAC/IP allowlists.</li>
+        <li>Outbound webhook URLs must pass <code>validate_private_url()</code> unless explicitly overridden.</li>
+        <li>All <code>.extra(where=...)</code> and <code>cursor.execute</code> paths must use bound parameters.</li>
+        <li>Production must override <code>settings/common.py</code> defaults — never ship with committed SECRET_KEY.</li>
+      </ol>
+    </section>
+
+    <section id="summary-table">
+      <h2>Findings Summary</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Severity</th><th>Category</th><th>Title</th></tr></thead>
+        <tbody>
+          <tr><td>CFG-002</td><td><span class="badge badge-critical">Critical</span></td><td>Secrets</td><td>Hardcoded SECRET_KEY in default settings</td></tr>
+          <tr><td>CFG-001</td><td><span class="badge badge-high">High</span></td><td>Misconfiguration</td><td>ALLOWED_HOSTS = ["*"]</td></tr>
+          <tr><td>CFG-003</td><td><span class="badge badge-high">High</span></td><td>Secrets</td><td>Default DB and RabbitMQ credentials</td></tr>
+          <tr><td>AUTH-001</td><td><span class="badge badge-high">High</span></td><td>Authentication</td><td>Login/recovery brute force — throttling disabled</td></tr>
+          <tr><td>RATE-001</td><td><span class="badge badge-high">High</span></td><td>API</td><td>Global API throttling disabled by default</td></tr>
+          <tr><td>AUTHZ-001</td><td><span class="badge badge-high">High</span></td><td>Authorization</td><td>GitLab hooks accept any source IP by default</td></tr>
+          <tr><td>DESER-001</td><td><span class="badge badge-high">High</span></td><td>Deserialization</td><td>Celery pickle serialization</td></tr>
+          <tr><td>DEP-001</td><td><span class="badge badge-high">High</span></td><td>Dependencies</td><td>Django 3.2 end-of-life</td></tr>
+          <tr><td>AUTH-002</td><td><span class="badge badge-medium">Medium</span></td><td>Authentication</td><td>6-character minimum password</td></tr>
+          <tr><td>AUTH-003</td><td><span class="badge badge-medium">Medium</span></td><td>Authentication</td><td>24-hour JWT access token lifetime</td></tr>
+          <tr><td>AUTH-004</td><td><span class="badge badge-medium">Medium</span></td><td>Authentication</td><td>Password recovery user enumeration</td></tr>
+          <tr><td>AUTH-005</td><td><span class="badge badge-medium">Medium</span></td><td>Authentication</td><td>Recovery token never expires</td></tr>
+          <tr><td>AUTHZ-002</td><td><span class="badge badge-medium">Medium</span></td><td>Authorization</td><td>Gogs legacy secret-in-body authentication</td></tr>
+          <tr><td>CFG-004</td><td><span class="badge badge-medium">Medium</span></td><td>Misconfiguration</td><td>Wildcard CORS with credentials enabled</td></tr>
+          <tr><td>SSRF-002</td><td><span class="badge badge-medium">Medium</span></td><td>SSRF</td><td>Private-address webhooks admin toggle</td></tr>
+          <tr><td>XSS-002</td><td><span class="badge badge-medium">Medium</span></td><td>XSS</td><td>|safe filter in email subject templates</td></tr>
+          <tr><td>FILE-002</td><td><span class="badge badge-medium">Medium</span></td><td>File upload</td><td>No attachment MIME/extension validation</td></tr>
+          <tr><td>DOCKER-003</td><td><span class="badge badge-medium">Medium</span></td><td>IaC</td><td>No startup validation of TAIGA_SECRET_KEY</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="critical-high">
+      <h2>Critical &amp; High Findings</h2>
+
+      <article class="finding" id="CFG-002">
+        <div class="finding-header">
+          <h3>[CFG-002] Hardcoded SECRET_KEY in default settings</h3>
+          <span class="badge badge-critical">Critical</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Secrets / Cryptographic failure</dd></div>
+          <div><dt>Location</dt><dd>settings/common.py:249</dd></div>
+          <div><dt>CWE</dt><dd>CWE-798, CWE-321</dd></div>
+        </dl>
+        <p><strong>Description.</strong> The default Django <code>SECRET_KEY</code> is committed in source control. Anyone deploying without overriding this value shares the same signing key as every other default installation, enabling JWT/session forgery and cryptographic bypass.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>SECRET_KEY = "aw3+t2r(8(0kkrhg8)gx6i96v5^kv%6cfep9wxfom0%7dy0m9e"</pre>
+        <p><strong>Exploit scenario.</strong></p>
+        <ol>
+          <li>Attacker identifies a Taiga instance using default or leaked configuration.</li>
+          <li>Attacker forges JWT tokens or session cookies signed with the known key.</li>
+          <li>Attacker gains authenticated access as any user, including administrators.</li>
+        </ol>
+        <p><strong>Remediation.</strong> Generate a unique <code>SECRET_KEY</code> per environment via environment variable (<code>docker/config.py</code> uses <code>TAIGA_SECRET_KEY</code>). Fail startup if unset. Never commit production keys. Rotate keys on compromise.</p>
+        <p><strong>Verification.</strong> Confirm <code>settings.SECRET_KEY</code> is not the default value in production; add CI lint rejecting known default key string.</p>
+      </article>
+
+      <article class="finding" id="CFG-001">
+        <div class="finding-header">
+          <h3>[CFG-001] ALLOWED_HOSTS accepts any host</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Security misconfiguration</dd></div>
+          <div><dt>Location</dt><dd>settings/common.py:17</dd></div>
+          <div><dt>CWE</dt><dd>CWE-16</dd></div>
+        </dl>
+        <p><strong>Description.</strong> <code>ALLOWED_HOSTS = ["*"]</code> disables Django's Host header validation, enabling host-header poisoning and cache-poisoning attacks when deployed behind misconfigured proxies.</p>
+        <pre>ALLOWED_HOSTS = ["*"]</pre>
+        <p><strong>Exploit scenario.</strong> Attacker sends requests with a malicious <code>Host</code> header; password-reset or absolute URLs in emails may point to attacker-controlled domains.</p>
+        <p><strong>Remediation.</strong> Set explicit hostnames in production config (see <code>settings/config.py.prod.example</code>).</p>
+      </article>
+
+      <article class="finding" id="CFG-003">
+        <div class="finding-header">
+          <h3>[CFG-003] Default database and message broker credentials</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Secrets</dd></div>
+          <div><dt>Location</dt><dd>settings/common.py:25-32, 51</dd></div>
+        </dl>
+        <pre>DATABASES = { "default": { "NAME": "taiga", "USER": "taiga", "PASSWORD": "taiga", ... } }
+CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672//'</pre>
+        <p><strong>Exploit scenario.</strong> Attacker with network access to PostgreSQL or RabbitMQ on a misconfigured deployment gains full data access or can inject Celery tasks.</p>
+        <p><strong>Remediation.</strong> Use strong unique credentials; restrict network access; enable TLS for broker connections in production.</p>
+      </article>
+
+      <article class="finding" id="AUTH-001">
+        <div class="finding-header">
+          <h3>[AUTH-001] Login and recovery brute force — throttling disabled</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Authentication</dd></div>
+          <div><dt>Location</dt><dd>settings/common.py:485-496</dd></div>
+        </dl>
+        <pre>"login-fail": None,
+"register-success": None,
+...</pre>
+        <p><strong>Description.</strong> Throttle infrastructure exists (<code>taiga/base/throttling.py</code>, <code>LoginFailRateThrottle</code>) but default rates are <code>None</code>, which causes <code>CommonThrottle</code> to allow unlimited requests.</p>
+        <p><strong>Exploit scenario.</strong> Attacker performs credential stuffing against <code>/api/v1/auth</code> and password recovery spam without rate limits.</p>
+        <p><strong>Remediation.</strong> Set production rates, e.g. <code>"login-fail": "5/minute"</code>, <code>"register-success": "3/hour"</code>, <code>"anon-write": "60/minute"</code>.</p>
+      </article>
+
+      <article class="finding" id="RATE-001">
+        <div class="finding-header">
+          <h3>[RATE-001] Global API throttling disabled</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>API security</dd></div>
+          <div><dt>Location</dt><dd>settings/common.py:485-496</dd></div>
+        </dl>
+        <p>All scopes except <code>import-dump-mode</code> are <code>None</code>. Enables API abuse, resource exhaustion, and registration spam on public instances.</p>
+        <p><strong>Remediation.</strong> Configure per-scope limits appropriate to deployment size; consider reverse-proxy rate limiting (nginx, Cloudflare).</p>
+      </article>
+
+      <article class="finding" id="AUTHZ-001">
+        <div class="finding-header">
+          <h3>[AUTHZ-001] GitLab inbound webhooks accept any source IP</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Authorization / Access control</dd></div>
+          <div><dt>Location</dt><dd>settings/common.py:597; taiga/hooks/gitlab/api.py:47-61</dd></div>
+        </dl>
+        <pre>GITLAB_VALID_ORIGIN_IPS = []
+
+# In gitlab/api.py — when valid_origin_ips is empty, matching_origin_ip stays True
+if valid_origin_ips:
+    matching_origin_ip = len(all_matching_cidrs(origin_ip, valid_origin_ips)) > 0</pre>
+        <p><strong>Exploit scenario.</strong> Attacker who obtains the GitLab hook URL and project secret (<code>?project=&lt;id&gt;&amp;key=&lt;secret&gt;</code>) can POST from any IP and trigger issue/task mutations — IP allowlist is not enforced by default.</p>
+        <p><strong>Remediation.</strong> Populate <code>GITLAB_VALID_ORIGIN_IPS</code> with GitLab instance CIDRs, or enforce IP filtering at the reverse proxy. Compare with Bitbucket's default CIDR allowlist in the same settings file.</p>
+      </article>
+
+      <article class="finding" id="DESER-001">
+        <div class="finding-header">
+          <h3>[DESER-001] Celery pickle serialization</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Deserialization</dd></div>
+          <div><dt>Location</dt><dd>settings/common.py:53-55</dd></div>
+          <div><dt>CWE</dt><dd>CWE-502</dd></div>
+        </dl>
+        <pre>CELERY_ACCEPT_CONTENT = ['pickle', ]
+CELERY_TASK_SERIALIZER = "pickle"
+CELERY_RESULT_SERIALIZER = "pickle"</pre>
+        <p><strong>Exploit scenario.</strong> Compromised RabbitMQ or message injection leads to arbitrary code execution on Celery workers when pickle is deserialized.</p>
+        <p><strong>Remediation.</strong> Switch to JSON: <code>CELERY_TASK_SERIALIZER = "json"</code>, <code>CELERY_ACCEPT_CONTENT = ["json"]</code>. Audit task signatures for pickle-only types.</p>
+      </article>
+
+      <article class="finding" id="DEP-001">
+        <div class="finding-header">
+          <h3>[DEP-001] Django 3.2 end-of-life</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Dependencies</dd></div>
+          <div><dt>Location</dt><dd>requirements.txt (django==3.2.25)</dd></div>
+        </dl>
+        <p>Django 3.2 LTS ended April 2024. No security patches for newly discovered vulnerabilities. Plan upgrade to Django 4.2 LTS or 5.x with full regression testing.</p>
+      </article>
+    </section>
+
+    <section id="medium">
+      <h2>Medium Findings</h2>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[AUTH-002] Weak password policy</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>taiga/users/api.py:215-216</code></p>
+        <pre>if len(password) &lt; 6:
+    raise exc.WrongArguments(_("Invalid password length at least 6 characters needed"))</pre>
+        <p><strong>Fix:</strong> Enforce minimum 12 characters, complexity rules, or integrate Django password validators (<code>AUTH_PASSWORD_VALIDATORS</code>).</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[AUTH-003] 24-hour JWT access token lifetime</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>settings/common.py:450-454</code> — <code>ACCESS_TOKEN_LIFETIME: timedelta(hours=24)</code></p>
+        <p><strong>Fix:</strong> Reduce to 1 hour with refresh token rotation (already enabled: <code>ROTATE_REFRESH_TOKENS: True</code>).</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[AUTH-004] Password recovery user enumeration</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>taiga/users/api.py:157-172</code></p>
+        <p>Invalid username returns error; valid user returns <code>{"detail": "Mail sent successfully!"}</code>. Attacker enumerates registered emails.</p>
+        <p><strong>Fix:</strong> Always return identical success response; send email only when user exists.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[AUTH-005] Recovery token has no expiry</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>taiga/users/api.py:166-167</code> — <code>user.token = str(uuid.uuid4())</code> with no TTL in <code>RecoveryValidator</code></p>
+        <p><strong>Fix:</strong> Add <code>token_expires_at</code> field; reject tokens older than 1 hour.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[AUTHZ-002] Gogs legacy secret-in-body authentication</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>taiga/hooks/gogs/api.py:33-35</code></p>
+        <p>Legacy path compares <code>payload.get('secret') == secret</code> in JSON body without HMAC — secret visible in request body/logs.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[CFG-004] Wildcard CORS with credentials</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>taiga/base/middleware/cors.py:12-18, 44-45</code></p>
+        <pre>CORS_ALLOWED_ORIGINS = "*"
+CORS_ALLOWED_CREDENTIALS = True
+# Response: Access-Control-Allow-Origin: * + Allow-Credentials: true</pre>
+        <p>Browsers reject credentialed requests with <code>*</code> origin — indicates unsafe CORS design. Use explicit origin allowlist.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SSRF-002] Private-address webhooks admin toggle</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>settings/common.py:602</code>, <code>taiga/webhooks/tasks.py:76-78</code></p>
+        <p>Default <code>WEBHOOKS_ALLOW_PRIVATE_ADDRESS = False</code> is safe. When enabled via <code>docker/config.py</code> env, project admins can target internal metadata endpoints (e.g. cloud IAM).</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[XSS-002] |safe filter in email subject templates</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>taiga/projects/notifications/templates/emails/**/**-subject.jinja</code></p>
+        <pre>{% trans project=project.name|safe, ref=snapshot.ref, subject=snapshot.subject|safe %}</pre>
+        <p>User-controlled project names and story subjects bypass escaping in email subjects — phishing/XSS in email clients.</p>
+        <p><strong>Fix:</strong> Remove <code>|safe</code> or HTML-escape user content in notification templates.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[FILE-002] No attachment type validation</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>taiga/projects/attachments/validators.py:19</code></p>
+        <p>Attachments accept any file type. Risk if served inline without <code>Content-Disposition: attachment</code>. Avatars are validated via PIL (<code>users/api.py:237-240</code>).</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[DOCKER-003] No TAIGA_SECRET_KEY validation at startup</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>docker/config.py:30</code></p>
+        <p><code>SECRET_KEY = os.getenv('TAIGA_SECRET_KEY')</code> — missing env yields <code>None</code>, breaking crypto silently or at runtime.</p>
+      </article>
+    </section>
+
+    <section id="low-info">
+      <h2>Low &amp; Informational Findings</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Severity</th><th>Issue</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>AUTH-006</td><td><span class="badge badge-low">Low</span></td><td>Session auth enabled without CSRF for API</td><td>Disable <code>taiga.auth.backends.Session</code> in production</td></tr>
+          <tr><td>AUTHZ-003</td><td><span class="badge badge-low">Low</span></td><td>Enumerable project IDs in hook URLs</td><td>Use unguessable webhook tokens; rotate secrets</td></tr>
+          <tr><td>AUTHZ-004</td><td><span class="badge badge-low">Low</span></td><td>Public user listing (<code>list_perms = AllowAny()</code>)</td><td>Product feature — document privacy implications</td></tr>
+          <tr><td>XSS-003</td><td><span class="badge badge-low">Low</span></td><td>Permissive bleach attributes (<code>style</code>, <code>id</code>)</td><td>Tighten ALLOWED_ATTRIBUTES for wiki/descriptions</td></tr>
+          <tr><td>DEP-002</td><td><span class="badge badge-low">Low</span></td><td>SHA-1 HMAC for webhooks</td><td>Migrate to SHA-256 where partners support it</td></tr>
+          <tr><td>INJ-001</td><td><span class="badge badge-info">Info</span></td><td>Raw SQL via <code>.extra(where=...)</code> — parameterized, safe</td><td>No action; continue auditing new queries</td></tr>
+          <tr><td>INJ-003</td><td><span class="badge badge-info">Info</span></td><td>No eval/yaml.load in runtime API code</td><td>No action</td></tr>
+          <tr><td>SSRF-001</td><td><span class="badge badge-info">Info</span></td><td>Outbound webhook SSRF blocked by default</td><td>Keep <code>WEBHOOKS_ALLOW_PRIVATE_ADDRESS=False</code></td></tr>
+          <tr><td>CSRF-001</td><td><span class="badge badge-info">Info</span></td><td>API csrf_exempt — expected for JWT</td><td>Document; disable session auth in prod</td></tr>
+          <tr><td>FILE-001</td><td><span class="badge badge-info">Info</span></td><td>Upload path uses SHA256 + slugify</td><td>No action</td></tr>
+          <tr><td>DOCKER-001</td><td><span class="badge badge-info">Info</span></td><td>Container runs as non-root user (UID 999)</td><td>Positive control</td></tr>
+          <tr><td>DOCKER-002</td><td><span class="badge badge-info">Info</span></td><td>DEBUG defaults to False in Docker</td><td>Positive control</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="verified-safe">
+      <h2>Verified Safe Controls</h2>
+      <ul class="safe-list">
+        <li><strong>JWT validation + denylist</strong> — <code>taiga/auth/authentication.py</code>, token denylist module; HS256, active user check</li>
+        <li><strong>Project RBAC</strong> — <code>HasProjectPerm</code>, membership roles, anon/public permission arrays</li>
+        <li><strong>Queryset isolation</strong> — <code>PermissionBasedFilterBackend</code> scopes lists to visible projects</li>
+        <li><strong>Outbound webhook SSRF block</strong> — <code>validate_private_url()</code> in <code>taiga/webhooks/tasks.py:76-78</code></li>
+        <li><strong>GitHub inbound HMAC</strong> — <code>hmac.compare_digest</code> with project secret</li>
+        <li><strong>Bitbucket IP allowlist</strong> — Default Atlassian CIDR ranges configured</li>
+        <li><strong>SQL parameterization</strong> — Search/filter uses bound parameters via <code>to_tsquery()</code></li>
+        <li><strong>Markdown sanitization</strong> — <code>bleach.clean()</code> in <code>taiga/mdrender/service.py</code></li>
+        <li><strong>Public registration disabled</strong> — <code>PUBLIC_REGISTER_ENABLED = False</code></li>
+        <li><strong>Password hashing</strong> — PBKDF2 via Django defaults</li>
+      </ul>
+    </section>
+
+    <section id="owasp">
+      <h2>OWASP Top 10 (2021) Coverage</h2>
+      <table>
+        <thead><tr><th>Category</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>A01 Broken Access Control</td><td><span class="badge badge-high">Fail</span></td><td>AUTHZ-001 GitLab IP bypass; strong project RBAC elsewhere</td></tr>
+          <tr><td>A02 Cryptographic Failures</td><td><span class="badge badge-critical">Fail</span></td><td>CFG-002 hardcoded SECRET_KEY; DEP-002 SHA-1 HMAC</td></tr>
+          <tr><td>A03 Injection</td><td><span class="badge badge-pass">Pass</span></td><td>INJ-001: parameterized queries; no exploitable SQLi found</td></tr>
+          <tr><td>A04 Insecure Design</td><td><span class="badge badge-high">Fail</span></td><td>AUTH-001, RATE-001 disabled throttling by default</td></tr>
+          <tr><td>A05 Security Misconfiguration</td><td><span class="badge badge-critical">Fail</span></td><td>CFG-001/002/003/004 default unsafe settings</td></tr>
+          <tr><td>A06 Vulnerable Components</td><td><span class="badge badge-high">Fail</span></td><td>DEP-001 Django 3.2 EOL</td></tr>
+          <tr><td>A07 Auth Failures</td><td><span class="badge badge-high">Fail</span></td><td>AUTH-001/002/004/005</td></tr>
+          <tr><td>A08 Software/Data Integrity</td><td><span class="badge badge-high">Fail</span></td><td>DESER-001 Celery pickle</td></tr>
+          <tr><td>A09 Logging &amp; Monitoring</td><td><span class="badge badge-medium">Partial</span></td><td>Standard Django logging; no dedicated security audit trail reviewed</td></tr>
+          <tr><td>A10 SSRF</td><td><span class="badge badge-pass">Pass</span></td><td>SSRF-001 safe default; SSRF-002 config-dependent</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="out-of-scope">
+      <h2>Out of Scope &amp; Assumptions</h2>
+      <ul>
+        <li>No dynamic penetration testing or production environment access</li>
+        <li>Frontend (<code>taiga-front</code>) and deployment orchestration not reviewed</li>
+        <li>Assumed operators override <code>settings/common.py</code> per <code>config.py.prod.example</code> — findings target default/misconfigured deployments</li>
+        <li>CVE database not exhaustively scanned; recommend <code>pip-audit</code> in CI</li>
+        <li>Review based on repository state at clone time (main branch, shallow clone)</li>
+      </ul>
+      <p>Per Taiga's <a href="https://github.com/taigaio/taiga-back/blob/main/SECURITY.md" target="_blank" rel="noopener">security policy</a>, report exploitable vulnerabilities privately to <a href="mailto:security@taiga.io">security@taiga.io</a> — do not open public issues for security bugs.</p>
+    </section>
+
+    <section id="next-steps">
+      <h2>Recommended Next Steps</h2>
+      <h3>Production blockers (mandatory)</h3>
+      <ol>
+        <li>Override <code>SECRET_KEY</code>, <code>ALLOWED_HOSTS</code>, DB and RabbitMQ credentials (CFG-001/002/003)</li>
+        <li>Enable throttle rates: <code>login-fail</code>, <code>register-success</code>, <code>anon-write</code>, <code>user-write</code> (AUTH-001, RATE-001)</li>
+        <li>Configure <code>GITLAB_VALID_ORIGIN_IPS</code> or proxy-level IP filtering (AUTHZ-001)</li>
+        <li>Switch Celery to JSON serialization (DESER-001)</li>
+        <li>Plan Django 4.2+ upgrade with regression testing (DEP-001)</li>
+      </ol>
+      <h3>Recommended (non-blocking)</h3>
+      <ol>
+        <li>Add password recovery token TTL (AUTH-005)</li>
+        <li>Uniform password recovery responses (AUTH-004)</li>
+        <li>Restrict attachment MIME types (FILE-002)</li>
+        <li>Remove <code>|safe</code> from email subject templates (XSS-002)</li>
+        <li>Fix CORS to explicit origin allowlist (CFG-004)</li>
+        <li>Add CI gate: reject default SECRET_KEY string in deployed configs</li>
+      </ol>
+      <p style="margin-top:2rem;color:var(--muted);font-size:0.85rem">
+        Generated by Security Reviewer agent workflow · Skills: security-review-methodology, business-logic-authentication, business-logic-authorization, source-sink-injection, api-security-review, dependency-supply-chain, owasp-top-10-review, security-review-report
+      </p>
+    </section>
+  </main>
+</div>
+</body>
+</html>

