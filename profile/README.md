@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- Animated typing header -->
-<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=700&size=28&duration=2800&pause=900&color=00FF88&center=true&vCenter=true&width=600&lines=Hey+there%2C+I'm+TehLeThAL+%F0%9F%91%8B;Building+agents+that+actually+do+stuff;Cloud+%E2%80%A2+Python+%E2%80%A2+Automation+%E2%80%A2+Chaos+%28controlled%29" alt="Typing intro" />
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=22&duration=2800&pause=900&color=00FF88&center=true&vCenter=true&width=900&lines=Hey%2C+I'm+TehLeThAL+%F0%9F%91%8B;Building+useful+agents;Cloud+%C2%B7+Python+%C2%B7+Automation" alt="Typing intro" />
 
 <br />
 
@@ -21,7 +21,7 @@
 + status   :: Probably wiring another bot to Slack right now
 ```
 
-I build **AI agents** that live in the real world — Telegram chats, Slack workspaces, GCP, pub/sub pipelines — with sandboxes, tool access, and **human-in-the-loop approval** when things get spicy.
+I build **AI agents** for the real world — with sandboxes, tool access, and **human-in-the-loop approval** when things get spicy.
 
 No surprise shell commands. No rogue file writes. Just agents that *work*.
 
@@ -38,16 +38,6 @@ No surprise shell commands. No rogue file writes. Just agents that *work*.
   <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/n8n-EA4B71?style=for-the-badge&logo=n8n&logoColor=white" alt="n8n" />
 </p>
-
----
-
-### `> currently.building()`
-
-| Project | What it does |
-|---------|--------------|
-| 🤖 **sagent** | Talk to Claude from Telegram — sandboxed code, MCP tools, inline approval for the dangerous stuff |
-| ☁️ **GCP Agent Suite** | Cloud-native agents wired into Slack, Pub/Sub, and real infra |
-| 🔧 **Agent SDK dev** | Prototyping the next generation of tool-using agents |
 
 ---
 
