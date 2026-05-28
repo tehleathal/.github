@@ -27,35 +27,6 @@ No surprise shell commands. No rogue file writes. Just agents that *work*.
 
 ---
 
-### `> tech_stack.sh`
-
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/Google_Cloud-4285F4?style=for-the-badge&logo=google-cloud&logoColor=white" alt="GCP" />
-  <img src="https://img.shields.io/badge/Slack-4A154B?style=for-the-badge&logo=slack&logoColor=white" alt="Slack" />
-  <img src="https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
-  <img src="https://img.shields.io/badge/n8n-EA4B71?style=for-the-badge&logo=n8n&logoColor=white" alt="n8n" />
-</p>
-
----
-
-### `> github.stats --live`
-
-<div align="center">
-
-<img height="165" src="https://github-readme-stats.vercel.app/api?username=tehleathal&show_icons=true&theme=tokyonight&hide_border=true&bg_color=0d1117&title_color=00ff88&icon_color=7b2ff7&text_color=c9d1d9" alt="GitHub stats" />
-<img height="165" src="https://github-readme-streak-stats.herokuapp.com/?user=tehleathal&theme=tokyonight&hide_border=true&background=0D1117&ring=00ff88&fire=7b2ff7&currStreakLabel=00ff88" alt="GitHub streak" />
-
-<br />
-
-<img src="https://github-readme-activity-graph.vercel.app/graph?username=tehleathal&theme=tokyo-night&hide_border=true&bg_color=0d1117&color=7b2ff7&line=00ff88&point=ffffff" width="100%" alt="Contribution graph" />
-
-</div>
-
----
-
 ### `> connect()`
 
 <p align="center">
