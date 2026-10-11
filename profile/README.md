@@ -43,11 +43,9 @@ No surprise shell commands. No rogue file writes. Just agents that *work*.
    ╭──────────────────────────────────────╮
    │  "Automate the boring.               │
    │   Approve the lethal."               │
-   │                    — probably me       │
+   │                    — probably me     │
    ╰──────────────────────────────────────╯
 ```
-
-<img src="https://komarev.com/ghpvc/?username=tehleathal&label=profile%20views&color=00ff88&style=flat-square" alt="Profile views" />
 
 <br /><br />
 
