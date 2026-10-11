@@ -47,8 +47,6 @@ No surprise shell commands. No rogue file writes. Just agents that *work*.
    ╰──────────────────────────────────────╯
 ```
 
-<br /><br />
-
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:7b2ff7,100:00ff88&height=100&section=footer&animation=twinkling" width="100%" />
 
 **Thanks for stopping by — go break something useful.** ⚡
